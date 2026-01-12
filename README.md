@@ -8,4 +8,10 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 Uses Apple CryptoKit. No network activity in analysis pipeline (verifiable). Device-bound encryption keys.
 
+---
+
+**Note:** This repository replaces our previous transparency repo (NuDefndr-Core, active 2024-2025), which was archived due to scope creep and included non-essential components. This streamlined version focuses solely on core security primitives for independent verification.
+
+---
+
 MIT License. Not independently audited. Partial transparency release only.
