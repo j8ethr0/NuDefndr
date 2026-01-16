@@ -1,12 +1,11 @@
 // NudeFndr - nudefndr.com
-// Transparency Repository - Keychain integration
-
-import Foundation
-import Security
-import CryptoKit
-
 /// iOS Keychain manager with device-bound key storage
 /// Uses kSecAttrAccessibleWhenUnlockedThisDeviceOnly (keys never backed up to iCloud)
+///
+/// Note: Biometric access control is intentionally NOT enforced on keychain items.
+/// Face ID is optional for vault access in NudeFndr, so enforcing biometric keychain
+/// protection would break non-biometric workflows. Keys remain device-bound via
+/// kSecAttrAccessibleWhenUnlockedThisDeviceOnly.
 final class KeychainManager {
 	
 	enum KeychainError: Error {
