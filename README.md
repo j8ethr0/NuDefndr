@@ -37,8 +37,8 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Requirements
 
-- iOS 17+
-- Xcode 15+
+- iOS 18+
+- iPhone/iPad
 
 ## Documentation
 
