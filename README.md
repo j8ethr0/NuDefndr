@@ -11,10 +11,11 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-01-18 – Version 2.2.2**
-- Setup assistance improvements with in-app status checker for Sensitive Content Warning
-- Enhanced onboarding and FAQ with visual guides
-- Localization fixes in Smart Scan settings
+**2026-01-23 – Version 2.2.3**
+- Enhanced background scan speed & efficiency - NuDefndr now automatically detects new photos and runs incremental scans
+- Stuck Scans: Fixed outlier issue (diagnosed on 14 Pro) where scans could get stuck at 0%
+- Added auto-recovery and "Clear Scan State" option in Settings ->Advanced
+- Improved FAQ & translations
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 

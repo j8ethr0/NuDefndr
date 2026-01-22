@@ -4,7 +4,7 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
-## 2026-01-21 – Version 2.2.3
+## 2026-01-22 – Version 2.2.3
 
 **App Store Release**
 - Enhanced background scan speed & efficiency - NuDefndr now automatically detects new photos and runs incremental scans
