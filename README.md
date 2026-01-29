@@ -11,11 +11,11 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-01-23 – Version 2.2.3**
-- Enhanced background scan speed & efficiency - NuDefndr now automatically detects new photos and runs incremental scans
-- Stuck Scans: Fixed outlier issue (diagnosed on 14 Pro) where scans could get stuck at 0%
-- Added auto-recovery and "Clear Scan State" option in Settings ->Advanced
-- Improved FAQ & translations
+**2026-01-23 – Version 2.2.4**
+- Fixed pause/resume functionality on some devices - scans now correctly save progress and resume from where you left off instead of restarting
+- Improved scan progress accuracy when pausing mid-scan
+- Background auto-scans not affected. 
+- Background scanning incremental performance improvements
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 

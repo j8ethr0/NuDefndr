@@ -4,6 +4,19 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-01-30 – Version 2.2.4
+
+Bug Fixes:
+- Fixed pause/resume functionality on some devices - scans now correctly save progress and resume from where you left off instead of restarting
+- Improved scan progress accuracy when pausing mid-scan
+- Removed additional progress indicator during active manual scans for cleaner UI
+
+Performance Improvements
+- Significantly faster incremental scanning - intelligently skips already-analyzed photos
+- Optimized scan state persistence for better resume reliability
+
+---
+
 ## 2026-01-22 – Version 2.2.3
 
 **App Store Release**
