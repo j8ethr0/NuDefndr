@@ -4,6 +4,13 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-02-x – Version 2.2.5
+
+App Performance:
+- In progress
+
+---
+
 ## 2026-01-30 – Version 2.2.4
 
 Bug Fixes:

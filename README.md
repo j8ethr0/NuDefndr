@@ -11,11 +11,8 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-01-23 – Version 2.2.4**
-- Fixed pause/resume functionality on some devices - scans now correctly save progress and resume from where you left off instead of restarting
-- Improved scan progress accuracy when pausing mid-scan
-- Background auto-scans not affected. 
-- Background scanning incremental performance improvements
+**2026-02-07 – Version 2.2.5**
+- In Progress
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
