@@ -4,10 +4,12 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
-## 2026-02-x – Version 2.2.5
+## 2026-02-16 – Version 2.2.5
 
-App Performance:
-- In progress
+• Faster thumbnail loading with improved performance
+• Enhanced privacy controls on Results & Review screens
+• Share Redacted now respects blur settings (Pro)
+• UI refinements and bug fixes
 
 ---
 

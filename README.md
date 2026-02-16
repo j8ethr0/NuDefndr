@@ -11,8 +11,7 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-02-07 – Version 2.2.5**
-- In Progress
+**2026-02-16 – Version 2.2.5**
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
