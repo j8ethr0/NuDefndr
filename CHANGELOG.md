@@ -7,6 +7,7 @@ All notable changes to NudeFndr releases and this transparency repository.
 ## 2026-03-27 – Version 2.3.2 INCOMING
 
 • Advanced Time Range Scanning
+• Batch processing with progressive result saving
 • Improved Self-healing scan technology
 • Enhanced scan control feedback and affordances
 • 
