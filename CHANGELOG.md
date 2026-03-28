@@ -4,15 +4,15 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
-## 2026-03-27 – Version 2.3.2 INCOMING
+## 2026-03-28 – Version 2.3.2
 
-• Advanced Time Range Scanning
+• Advanced Time Range Scanning [Year and quarter-based]
 • Batch processing with progressive result saving
-• Improved Self-healing scan technology
+• Improved Self-healing scan technology & auto-recovers from interruptions
 • Enhanced scan control feedback and affordances
-• 
-•
-• 
+• iCloud photo timeout handling with retry mechanism
+• Vault toggle on/off on home screen
+• App interface & theming enhancements throughout
 
 ---
 
