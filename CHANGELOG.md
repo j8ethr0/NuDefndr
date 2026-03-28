@@ -6,33 +6,33 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ## 2026-03-28 – Version 2.3.2
 
-• Advanced Time Range Scanning [Year and quarter-based]
-• Batch processing with progressive result saving
-• Improved Self-healing scan technology & auto-recovers from interruptions
-• Enhanced scan control feedback and affordances
-• iCloud photo timeout handling with retry mechanism
-• Vault toggle on/off on home screen
-• App interface & theming enhancements throughout
+- Advanced Time Range Scanning [Year and quarter-based]
+- Batch processing with progressive result saving
+- Improved Self-healing scan technology & auto-recovers from interruptions
+- Enhanced scan control feedback and affordances
+- iCloud photo timeout handling with retry mechanism
+- Vault toggle on/off on home screen
+- App interface & theming enhancements throughout
 
 ---
 
 ## 2026-02-20 – Version 2.3.1
 
-• Swipe navigation added across the app for more natural movement between screens
-• Multiple performance improvements - faster browsing, smoother scrolling, and reduced battery usage
-• Optimized photo scanning and results (results & review pages) loading for significantly improved responsiveness
-• Improved memory usage and storage calculation accuracy
-• New premium app icons (8 designs) available in Settings
-• Some speed & stability improvements and bug fixes
+- Swipe navigation added across the app for more natural movement between screens
+- Multiple performance improvements - faster browsing, smoother scrolling, and reduced battery usage
+- Optimized photo scanning and results (results & review pages) loading for significantly improved responsiveness
+- Improved memory usage and storage calculation accuracy
+- New premium app icons (8 designs) available in Settings
+- Some speed & stability improvements and bug fixes
 
 ---
 
 ## 2026-02-16 – Version 2.2.5
 
-• Faster thumbnail loading with improved performance
-• Enhanced privacy controls on Results & Review screens
-• Share Redacted now respects blur settings (Pro)
-• UI refinements and bug fixes
+- Faster thumbnail loading with improved performance
+- Enhanced privacy controls on Results & Review screens
+- Share Redacted now respects blur settings (Pro)
+- UI refinements and bug fixes
 
 ---
 
