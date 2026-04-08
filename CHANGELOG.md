@@ -4,6 +4,18 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-04-08 – Version 2.3.3
+
+- Audit Trail [Pro]:
+- Comprehensive security logging system tracking all scan operations, vault access events, and settings changes. Real-time event logging with severity filtering, category-based organization. Biometric authentication required to clear logs. Detailed metadata inspection.
+- Data export available as plain txt or formatted csv.
+- ProMotion Vault Engine [Pro]: 
+- Re-engineered for speed. Asynchronous loading and advanced caching for stutter-free scrolling.
+- Settings redesign & theme enhancements
+- Rebuilt modular interface with improved navigation and color-coded security categories.
+
+---
+
 ## 2026-03-28 – Version 2.3.2
 
 - Advanced Time Range Scanning [Year and quarter-based]
