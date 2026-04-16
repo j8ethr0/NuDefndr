@@ -4,6 +4,16 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-04-16 – Version 2.3.4
+
+- Audit Trail [Pro]:
+- Audit trail now logs data export events with file size and format
+- Enhanced audit logging with IPv6, failed auth tracking, image IDs and app version changes
+- Improved vault performance for larger datasets (50+ items)
+- Info page now shows app version, build number, and device/iOS details
+
+---
+
 ## 2026-04-08 – Version 2.3.3
 
 - Audit Trail [Pro]:
