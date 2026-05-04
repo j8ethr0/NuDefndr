@@ -4,6 +4,13 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-05-05 – Version 2.4.1
+
+- Performance improvements system-wide
+- In-prograss
+
+---
+
 ## 2026-04-16 – Version 2.3.4
 
 - Audit Trail [Pro]:

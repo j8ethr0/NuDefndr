@@ -19,7 +19,7 @@ Q: Audited?
 A: No.
 
 Q: Do I need to enable "Sensitive Content Warning"?
-A: Strongly recommended for best results. The app surfaces its status and provides guidance. You can toggle it in Settings → Privacy & Security → Sensitive Content Warning.
+A: Yes. The app surfaces its status and provides guidance. You can toggle it in Settings → Privacy & Security → Sensitive Content Warning.
 
 Q: Does this setting upload anything to the cloud?
 A: No. It affects on-device analysis only. NuDefndr has zero network activity.
