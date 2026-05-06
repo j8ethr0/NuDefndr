@@ -4,10 +4,16 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
-## 2026-05-0x – Version 2.4.1
+## 2026-05-07 – Version 2.4.1
 
-- Performance improvements system-wide
-- In-prograss
+- PhotoLibrary architecture refactor with improved component separation
+- Fixed thread safety issues in background scan operations (MainActor enforcement)
+- Reduced iCloud asset timeout from 20s to 10s for faster scan progression
+- Removed verbose debug logging from scan execution hot paths
+- DeAd theme visual enhancements [Premium]
+- Settings & Info page layout improvements with better readability
+- FAQ page redesign with section-specific color coding
+- Interactive Audit Trail demo website [accessible from Info page & dro1d.org / nudefndr.com]
 
 ---
 
