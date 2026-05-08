@@ -4,6 +4,17 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-05-09 – Version 2.4.2
+
+- Faster batch scanning with optimized image processing
+- Improved scan scheduling and incremental detection reliability [Pro]
+- Enhanced background scan stability / outlier timeouts resolved [Pro]
+- Audit Trail is now available from the Info page [Pro]
+- Fixed Audit Trail URL
+- Minor fixes and performance refinements
+
+---
+
 ## 2026-05-07 – Version 2.4.1
 
 - PhotoLibrary architecture refactor with improved component separation
