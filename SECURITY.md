@@ -1,14 +1,14 @@
 # Security Disclosure
 
-**App:** NudeFndr (com.dro1d.PicDefndr)  
+**App:** NudeFndr
 **Email:** security@dro1d.org
 
 ## Response Times
 
-- Acknowledgment: ≤72 hours
-- Initial response: ≤7 days
-- Fix: ≤30-90 days
-- Public disclosure: 90 days after fix
+- Acknowledgment: ≤48 hours
+- Initial response: ≤72 days
+- Fix: ≤01-10 days
+- Public disclosure: 30 days after fix
 
 ## Safe Harbor
 
