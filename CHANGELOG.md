@@ -4,12 +4,12 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
-## 2026-05-22 – Version 2.5.1
+## 2026-05-23 – Version 2.5.1
 
 - Scanning and vault performance optimizations
 - Improved image viewing, zooming, caching, and rendering responsiveness
 - Added Settings search for faster navigation
-- Added two major new Premium themes: Pixel and Terminal
+- Added two new Premium themes: Pixel Ghost and Terminal
 - Full app-wide custom theming enhancements for all premium themes
 - Enhanced onboarding flow and refined overall UI consistency
 - Redaction editor fixes with improved reliability and style selection
