@@ -4,6 +4,18 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-05-31 – Version 2.5.2
+
+- Ephemeral decryption keys: automatic RAM purge on scene phase transition
+- Optimized background timeout before volatile memory scrubbing
+- Zero-persistence architecture: no decrypted data survives app suspension
+- Enhanced PIXEL and TERMINAL premium theme rendering
+- Settings UI refactor: tabbed interface (Security/UI) for improved navigation hierarchy
+- Internationalization improvements: refined onboarding flow and translation accuracy
+- Canvas rendering optimizations with reduced draw cycle overhead
+
+---
+
 ## 2026-05-23 – Version 2.5.1
 
 - Scanning and vault performance optimizations

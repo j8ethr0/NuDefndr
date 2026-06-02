@@ -6,8 +6,8 @@
 ## Response Times
 
 - Acknowledgment: ≤48 hours
-- Initial response: ≤72 days
-- Fix: ≤01-10 days
+- Initial response: ≤7 days
+- Fix: 1-10 days
 - Public disclosure: 30 days after fix
 
 ## Safe Harbor

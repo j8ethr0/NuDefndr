@@ -11,7 +11,7 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-05-22 – Version 2.5.1**
+**2026-05-31 – Version 2.5.2**
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
@@ -31,9 +31,12 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repos
 
 ## Security
 
-- On-device ML only (zero network)
-- ChaCha20-Poly1305 encryption
-- iOS Keychain storage (device-bound keys)
+- ChaCha20-Poly1305 AEAD: 256-bit authenticated encryption with tamper detection
+- Ephemeral keys: automatic RAM purge on app suspension, no disk persistence
+- Device-bound storage: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+- Key derivation: PBKDF2, 100k iterations, SHA-256
+- On-device ML: zero network activity, zero telemetry
+- No cloud sync: vault excluded from iCloud backup
 
 ## Requirements
 
