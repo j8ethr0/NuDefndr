@@ -2,99 +2,73 @@
 
 ## Privacy & Security
 
-**Q: Does NudeFndr send anything over the network?**  
-A: No. All image analysis, classification, and processing happens entirely on-device.
+**Q: Does NuDefndr send anything over the network?** A: No. All image analysis, classification, and processing happens entirely on-device. The app operates 100% offline.
 
-**Q: Is any data sent to external servers?**  
-A: No. NudeFndr does not transmit your photos, scan results, or metadata to any external servers.
+**Q: Is any data sent to external servers?** A: No. NuDefndr does not transmit your photos, scan results, logs, or metadata to any external infrastructure.
 
-**Q: What encryption does NudeFndr use?**  
-A: ChaCha20-Poly1305 (256-bit AEAD authenticated encryption).
+**Q: What encryption standard does NuDefndr use?** A: ChaCha20-Poly1305 (256-bit AEAD authenticated encryption).
 
-**Q: Where are encryption keys stored?**  
-A: Keys are stored in the iOS Keychain, bound to your device, and are not backed up to iCloud.
+**Q: Where are encryption keys stored?** A: Keys are stored securely inside the iOS Keychain, strictly bound to the physical hardware, and are excluded from iCloud backups.
 
-**Q: What happens to decrypted vault data in memory?**  
-A: Decryption keys are ephemeral and automatically purged from RAM when the app backgrounds. No decrypted data persists after app suspension.
+**Q: What happens to decrypted vault data in memory?** A: Decryption keys are strictly ephemeral and are completely purged from RAM the moment the app enters the background. No decrypted data survives app suspension.
 
-**Q: How does NudeFndr's encryption compare to other vault apps?**  
-A: NudeFndr uses ChaCha20-Poly1305 authenticated encryption with ephemeral keys purged from memory on backgrounding. Decrypted data never survives app suspension. Keys are device-bound using `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and never backed up to iCloud.
+**Q: How does NuDefndr's encryption compare to standard vault apps?** A: Unlike apps that rely on standard file protection or cloud-synchronized keys, NuDefndr pairs ChaCha20-Poly1305 authenticated encryption with aggressive memory management. Keys are device-bound using `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, making them impossible to extract via iCloud restoration.
 
-**Q: Is NudeFndr open source?**  
-A: Partially. Core security and transparency-related components are publicly documented.
+**Q: Is NuDefndr open source?** A: Partially. Core security architectures, cryptographic wrappers, and transparency-critical components are publicly visible in this repository.
 
-**Q: Has NudeFndr been independently audited?**  
-A: Not currently.
+**Q: Has NuDefndr been independently audited?** A: Not currently. 
 
 ---
 
 ## Apple Sensitive Content Warning
 
-**Q: Do I need to enable Sensitive Content Warning?**  
-A: Yes. NudeFndr requires Apple's Sensitive Content Warning framework for image classification. The app checks its status and provides guidance if it is disabled.
+**Q: Do I need to enable Apple's Sensitive Content Warning?** A: Yes. NuDefndr wraps Apple's native `SensitiveContentAnalysis` framework. The app requires this system setting to be active to perform classifications.
 
-Enable it in:  
+Enable it via:  
 `Settings → Privacy & Security → Sensitive Content Warning`
 
-**Q: Does enabling this upload anything to Apple or the cloud?**  
-A: No. Sensitive Content Warning performs on-device analysis only.
+**Q: Does enabling this upload anything to Apple?** A: No. The system framework performs native on-device analysis exclusively.
 
 ---
 
 ## iCloud Photos & Scanning
 
-**Q: Does enabling iCloud scanning upload anything to iCloud or the internet?**  
-A: No. If a photo exists only in iCloud Photos (because **Optimize iPhone Storage** is enabled), iOS temporarily downloads that image to your device so NudeFndr can scan it locally.
+**Q: Does scanning iCloud assets stream data to third-party servers?** A: No. If a photo asset resides strictly in iCloud Photos (due to **Optimize iPhone Storage** being enabled), iOS temporarily downloads the asset to your local sandbox so NuDefndr can run its analysis. The app never caches or syncs these assets.
 
-NudeFndr never uploads, transmits, or syncs those images.
+**Q: Why do some iCloud photos take longer to scan?** A: Remote assets must complete their local download via the system photo daemon before analysis can begin. Performance depends entirely on your network speed and Apple's asset delivery.
 
-**Q: Why do some iCloud photos take time to scan?**  
-A: Images stored only in iCloud must first be downloaded by iOS before local analysis can begin. Scan speed depends on your connection and Apple's photo retrieval speed.
-
-**Q: What if an iCloud photo times out?**  
-A: Photos that fail to download within the timeout window can be retried later via the retry banner in Results.
+**Q: What happens if an iCloud download times out?** A: Assets that fail to load within the download window are flagged with a retry state inside the Results layout.
 
 ---
 
-## Scanning
+## Scanning Engine
 
-**Q: How do I scan very large libraries (50,000+ photos)?**  
-A: Use **Advanced Time Range** (Pro) to scan by year or quarter.
-Scanning your entire library at once may exceed iOS memory constraints on some devices.
+**Q: How do I scan massive libraries (50,000+ photos)?** A: Utilize the **Advanced Time Range** tool (Pro) to batch processing by year or quarter. Scanning extremely large libraries in a single pass can trigger iOS system memory caps.
 
-**Q: What happens if a scan is interrupted?**  
-A: Progress is checkpointed every 10-20 items. Completed results remain immediately available in the Results tab.
+**Q: What happens if a scan process is interrupted?** A: Progress checkpoints automatically every 10–20 items. Completed state changes persist immediately within the local cache.
 
-**Q: Do background auto-scans work with App Lock enabled?**  
-A: iOS background task scheduling may be restricted when biometric authentication is required at launch. If auto-scans are not completing as expected, temporarily disabling App Lock can help determine if authentication gating is the cause. This is an iOS framework limitation, not a defect in NudeFndr.
+**Q: Do background auto-scans work when App Lock is active?** A: iOS background task allocation can be heavily restricted if biometric gates are enforced at launch. If your automated background tasks are hanging, temporarily toggling App Lock off will isolate whether authentication gating is causing the iOS framework restriction.
 
 ---
 
 ## Audit Trail (Pro)
 
-**Q: What is Audit Trail?**  
-A: Audit Trail is a secure, locally stored record of important NudeFndr activity, with customizable timeframes and authenticated deletion.
+**Q: What is the Audit Trail feature?** A: A local, immutable ledger tracking sensitive structural operations within the app, featuring granular retention controls and authenticated purging.
 
-It tracks events such as:
+It logs events including:
+- Engine scan cycles
+- Biometric/PIN authentication events
+- Vault access mutations
+- Security level modifications
 
-- Scan start / completion
-- Authentication events
-- Vault access events
-- Security-related actions
+**Q: Where is the Audit Log stored?** A: Locally within isolated app storage. It is never synced, backed up, or exported automatically.
 
-**Q: Where is Audit Log stored?**  
-A: Only on your device.
-It is never uploaded, synced, or shared externally.
-
-**Q: Can Audit Log be modified?**  
-A: Entries are append-only during normal app operation to preserve integrity. You can modify exported log formats.
+**Q: Can the Audit Log be manipulated?** A: Entries are strictly append-only during active execution to preserve structural integrity.
 
 ---
 
-## Misc
+## Miscellaneous
 
-**Q: Why is scanning slower than my Photos app?**  
-A: NudeFndr performs local safety analysis on each image, which is significantly more computationally intensive than simply displaying thumbnails.
+**Q: Why is scanning slower than standard camera roll browsing?** A: NuDefndr executes localized tensor evaluation models on every single image frame, which demands significantly higher compute cycles than rendering flat UI thumbnails.
 
-**Q: Does deleting something in NudeFndr delete it from Photos?**  
-A: Only if you explicitly confirm deletion. NudeFndr never removes content automatically.
+**Q: Does deleting an item inside NuDefndr delete it from my system Photos?** A: Only if you explicitly grant system deletion permissions via the confirmation prompt. The app contains zero automated deletion logic.

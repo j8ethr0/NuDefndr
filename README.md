@@ -1,17 +1,17 @@
-# NudeFndr - Transparency Repository
+# NuDefndr - Transparency Repository
 
 Privacy-first iOS app for detecting sensitive content using Apple's on-device ML.
 
-🔗 Website: https://nudefndr.com  
-📱 App Store: https://apps.apple.com/jp/app/nudefndr/id6745149292  
-🌍 Languages: English, Japanese (日本語), Thai (ไทย), Simplified Chinese (简体中文)  
+🔗 Website: https://nudefndr.com
+📱 App Store: https://apps.apple.com/jp/app/nudefndr/id6745149292 
+🌍 Languages: English, Japanese (日本語), Thai (ไทย), Simplified Chinese (简体中文) 
 📄 License: MIT
 
 ---
 
 ## Latest Update
 
-**2026-05-31 – Version 2.5.2**
+**2026-06-11 – Version 2.5.3**
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
@@ -20,28 +20,28 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repos
 ## What's Included
 
 - Vault Encryption (ChaCha20-Poly1305)
-- Keychain Integration
-- SensitiveContentAnalysis Wrapper
+- Keychain Integration (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
+- SensitiveContentAnalysis Framework Wrapper
 
 ## What's NOT Included
 
-- UI code
-- Business logic
-- Production app code
+- Proprietary UI Code
+- Premium Feature Business Logic
+- Closed-Source Production Binaries
 
-## Security
+## Security Architecture
 
-- ChaCha20-Poly1305 AEAD: 256-bit authenticated encryption with tamper detection
-- Ephemeral keys: automatic RAM purge on app suspension, no disk persistence
-- Device-bound storage: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
-- Key derivation: PBKDF2, 100k iterations, SHA-256
-- On-device ML: zero network activity, zero telemetry
-- No cloud sync: vault excluded from iCloud backup
+- **ChaCha20-Poly1305 AEAD:** 256-bit authenticated encryption with hardware-level tamper detection.
+- **Ephemeral Keys:** Automatic RAM purge on app suspension; zero disk persistence.
+- **Device-Bound Storage:** Enforced `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` protection.
+- **Key Derivation:** PBKDF2, 100k iterations, SHA-256.
+- **Zero Telemetry:** 100% offline-first. Zero network activity, zero tracking hooks.
+- **No Cloud Leakage:** Vault paths are explicitly excluded from iCloud backups.
 
 ## Requirements
 
-- iOS 18+
-- iPhone/iPad
+- iOS 18.0+
+- CoreML compatible iPhone/iPad
 
 ## Documentation
 

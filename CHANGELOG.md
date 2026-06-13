@@ -4,6 +4,17 @@ All notable changes to NudeFndr releases and this transparency repository.
 
 ---
 
+## 2026-06-11 – Version 2.5.3
+
+- Redesigned Vault, Results & Review - cleaner in every premium theme
+- Scan results now appear right on the home screen status card, embedded
+- New adaptive photo grids (2–4 columns) with clearer actions
+- Share redacted enhancements for premium themes
+- "Ignore" is now "Mark Safe" - clearer what it does
+- Polish and bug fixes
+
+---
+
 ## 2026-05-31 – Version 2.5.2
 
 - Ephemeral decryption keys: automatic RAM purge on scene phase transition
