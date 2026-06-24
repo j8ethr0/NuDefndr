@@ -1,5 +1,10 @@
 # NuDefndr - Transparency Repository
 
+![Version](https://img.shields.io/badge/version-2.5.4-blue)
+![Platform](https://img.shields.io/badge/iOS-18%2B-black)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Languages](https://img.shields.io/badge/languages-4-orange)
+
 Privacy-first iOS app for detecting sensitive content using Apple's on-device ML.
 
 🔗 Website: https://nudefndr.com
@@ -11,7 +16,7 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-06-11 – Version 2.5.3**
+**2026-06-24 – Version 2.5.4**
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
@@ -37,6 +42,17 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repos
 - **Key Derivation:** PBKDF2, 100k iterations, SHA-256.
 - **Zero Telemetry:** 100% offline-first. Zero network activity, zero tracking hooks.
 - **No Cloud Leakage:** Vault paths are explicitly excluded from iCloud backups.
+
+## Verify It Yourself
+
+The published sources back the claims above directly — read the file, not just the description:
+
+| Source | Backs |
+|--------|-------|
+| [`Sources/Vault/VaultEncryption.swift`](Sources/Vault/VaultEncryption.swift) | ChaCha20-Poly1305 AEAD, 256-bit keys, PBKDF2 (100k iterations, SHA-256) |
+| [`Sources/Vault/KeychainManager.swift`](Sources/Vault/KeychainManager.swift) | Device-bound key storage via `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — keys never leave the device |
+| [`Sources/Scanner/ContentAnalyzer.swift`](Sources/Scanner/ContentAnalyzer.swift) | On-device `SensitiveContentAnalysis` wrapper — no network calls |
+| [`Sources/Models/ScanResult.swift`](Sources/Models/ScanResult.swift) | Scan result model — local only, no telemetry fields |
 
 ## Requirements
 

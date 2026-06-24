@@ -1,6 +1,18 @@
 # Changelog
 
-All notable changes to NudeFndr releases and this transparency repository.
+All notable changes to NuDefndr releases and this transparency repository.
+
+---
+
+## 2026-06-24 – Version 2.5.4
+
+- Vault: lock screen displays live encrypted storage usage, computed from on-disk file sizes without decrypting vault contents
+- Vault: fixed a thumbnail/viewer desync — the paginated items loader cache is now keyed on the item set (count + id hash) rather than only sort/filter, so add/delete/restore can no longer serve a stale list
+- Vault: modernized full-screen photo viewer (position counter, capture date, themed Restore / Share / Delete bar) with explicit restore confirmation
+- App Lock screen security status capsule (cipher / biometric / on-device), consistent with the Vault lock screen
+- Redaction editor: theme-aware controls and surfaced export errors that previously failed silently
+- Removed non-functional repeating animations across themed components
+- Performance and stability improvements
 
 ---
 
