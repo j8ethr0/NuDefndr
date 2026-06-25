@@ -4,6 +4,18 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-06-25 – Status: v2.5.4 still in review
+
+A quick transparency note for anyone wondering where 2.5.4 went.
+
+We submitted on June 24. Two days later, App Review came back — not with anything wrong in the app, but with the *text* of our App Store listing. The same description and keywords that have shipped without issue across roughly our last 20 updates over the past three months were, this time, flagged. App Review consistency remains an adventure.
+
+To be clear: **nothing about the app, its features, or your data has changed.** This is purely store-page wording. We've revised the listing, resubmitted, and we're back in the queue waiting on a re-review.
+
+We'll update here the moment it goes live. Thanks for your patience.
+
+---
+
 ## 2026-06-24 – Version 2.5.4
 
 - Vault: lock screen displays live encrypted storage usage, computed from on-disk file sizes without decrypting vault contents
