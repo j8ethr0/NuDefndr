@@ -4,6 +4,29 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-06-29 – Version 2.5.5 (supersedes 2.5.4)
+
+An update on the 2.5.4 situation: after the resubmitted 2.5.4 sat in the review queue for over four days with no movement, we decided to stop waiting. Rather than hold the fixes back, we're shipping **2.5.5** as a fresh submission. It includes everything from 2.5.4 plus a round of UI and stability work — the two releases are rolled into one, so nothing from 2.5.4 is lost.
+
+As always: nothing about how your data is handled has changed. All analysis stays on-device.
+
+**New in 2.5.5**
+
+- Themes: refined Terminal, Pixel & Tactical visuals for a sleeker, more premium look
+- Display: fixed dark-only themes (Terminal / Pixel / Tactical and others) that could render a washed-out white card under Light Mode — they now stay correctly dark regardless of system appearance
+- Layout: tightened the home screen so the cards and bottom navigation fit cleanly on larger iPhones (Pro Max)
+- Onboarding: refreshed the welcome sequence
+- Performance and stability improvements
+
+**Carried over from 2.5.4** (full detail in the 2.5.4 entry below)
+
+- Redesigned paywall with a dedicated unlock action
+- Modernized full-screen Vault viewer (restore / share / delete)
+- Live encrypted storage usage on the Vault and App Lock screens
+- Theme-aware redaction controls with surfaced export errors
+
+---
+
 ## 2026-06-25 – Status: v2.5.4 still in review
 
 A quick transparency note for anyone wondering where 2.5.4 went.
