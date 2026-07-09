@@ -4,6 +4,25 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-07-09 – Version 2.5.6
+
+Our biggest feature release in a while. As always, every one of these runs entirely on-device — nothing here sends your photos, documents, or location anywhere.
+
+**New in 2.5.6**
+
+- **Live Scan Activity:** watch a scan progress in real time from the Dynamic Island and Lock Screen, fronted by the NuDefndr ghost — its eyes change color with the scan state (scanning, paused, done). The completed state now lingers briefly so fast scans don't vanish before you notice them.
+- **Documents & IDs detection (opt-in):** on-device text recognition flags photos that expose payment cards, passports and other IDs, IBANs, SSNs, and credential phrases. It is deliberately conservative — every hit requires a structural check (card Luhn checksum, IBAN mod-97, passport machine-readable zone) so ordinary receipts, menus, and screenshots don't flood your results. Off by default, and nothing is uploaded.
+- **Instant Lock:** instantly lock the whole app behind Face ID — from Control Center, the Action Button, or Siri — even if App Lock isn't enabled. The app stays locked until you re-authenticate.
+- **Protection widget:** a Home Screen widget showing your protection status at a glance.
+- **Location Audit & Cleaner:** find photos that still carry GPS location data and strip it.
+- **Metadata stripping:** remove EXIF and other embedded metadata.
+- **Auto-Redact:** automatic redaction suggestions for sensitive regions before you share.
+- Refreshed app icon (the ghost) plus a set of alternate icons, and a round of Settings, Results, and Vault UI polish.
+
+As always: all scanning, detection, and redaction happen locally on your device. Nothing is sent to a server.
+
+---
+
 ## 2026-06-29 – Version 2.5.5 (supersedes 2.5.4)
 
 An update on the 2.5.4 situation: after the resubmitted 2.5.4 sat in the review queue for over four days with no movement, we decided to stop waiting. Rather than hold the fixes back, we're shipping **2.5.5** as a fresh submission. It includes everything from 2.5.4 plus a round of UI and stability work — the two releases are rolled into one, so nothing from 2.5.4 is lost.
