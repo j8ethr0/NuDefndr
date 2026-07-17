@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.5.6-blue)
+![Version](https://img.shields.io/badge/version-2.5.7-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-07-09 – Version 2.5.6**
+**2026-07-14 – Version 2.5.7**
 
-Live Scan Activity (Dynamic Island + Lock Screen), opt-in on-device Documents & IDs detection, Panic Lock, Protection widget, location & metadata cleaning, and Auto-Redact. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Stronger protection for high-risk situations, and vault recovery. Adds an encrypted, passphrase-protected Vault Key Recovery so a lost or reset device can't lock you out; a Distress PIN that permanently erases the vault when entered under duress; a hardened Panic PIN; a root-isolated decoy audit trail; and Lock Screen widgets. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
@@ -51,6 +51,7 @@ The published sources back the claims above directly — read the file, not just
 |--------|-------|
 | [`Sources/Vault/VaultEncryption.swift`](Sources/Vault/VaultEncryption.swift) | ChaCha20-Poly1305 AEAD, 256-bit keys, PBKDF2 (100k iterations, SHA-256) |
 | [`Sources/Vault/KeychainManager.swift`](Sources/Vault/KeychainManager.swift) | Device-bound key storage via `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — keys never leave the device |
+| [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) | Passphrase-wrapped vault key export/import (PBKDF2-SHA256 200k + AES-GCM) — air-gapped `.nudefndrkey` file, never uploaded |
 | [`Sources/Scanner/ContentAnalyzer.swift`](Sources/Scanner/ContentAnalyzer.swift) | On-device `SensitiveContentAnalysis` wrapper — no network calls |
 | [`Sources/Scanner/DocumentDetectionService.swift`](Sources/Scanner/DocumentDetectionService.swift) | On-device Documents & IDs detection via Apple Vision — no network calls; conservative structural checks (Luhn / IBAN mod-97 / passport MRZ) |
 | [`Sources/Models/ScanResult.swift`](Sources/Models/ScanResult.swift) | Scan result model — local only, no telemetry fields |

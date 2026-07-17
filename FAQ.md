@@ -69,9 +69,21 @@ Enable it via:
 
 **Q: Does the Live Activity / Dynamic Island send scan data anywhere?** A: No. The Live Activity is rendered entirely on-device from local scan progress. It displays only counts and progress — never image content — and transmits nothing.
 
-**Q: What does Instant Lock do?** A: Triggered from Control Center, the Action Button, or Siri, it immediately locks the entire app behind Face ID — even if you don't have App Lock enabled — without opening the app. The vault locks, any running scan is cancelled, and NuDefndr stays locked until you re-authenticate. It only affects NuDefndr's own lock state — it does not touch your device passcode or any other app. (Distinct from **Panic PIN**, which opens a decoy vault when you enter a specific code.)
+**Q: What does Instant Lock do?** A: Triggered from Control Center, the Action Button, or Siri, it immediately locks the entire app behind Face ID — even if you don't have App Lock enabled — without opening the app. The vault locks, any running scan is cancelled, and NuDefndr stays locked until you re-authenticate. It only affects NuDefndr's own lock state — it does not touch your device passcode or any other app.
 
 **Q: Do Location Audit and metadata stripping change my original photos?** A: Only when you explicitly ask. NuDefndr surfaces which photos still carry GPS or EXIF metadata; stripping is an action you confirm, and it never runs silently in the background.
+
+---
+
+## Vault Key Backup & Recovery (Pro) — new in 2.5.7
+
+**Q: Why would I need to back up my vault key?** A: Your vault's encryption key is stored only on this device (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). It never syncs to iCloud — but that also means that if the device is lost, reset, or restored from an iCloud backup, the key does not come back and the encrypted vault can no longer be opened. Key Recovery lets you export a copy of the key so that can't happen.
+
+**Q: How is the exported key protected?** A: The raw 256-bit vault key is wrapped with a key derived from a passphrase you choose (PBKDF2-HMAC-SHA256, 600,000 iterations) and sealed with AES-GCM authenticated encryption, then written to a `.nudefndrkey` file. The file is useless without the passphrase, and a wrong passphrase fails the AES-GCM authentication tag rather than silently producing a bad key.
+
+**Q: Is anything uploaded?** A: No. The export is fully air-gapped — the file is handed to the iOS share sheet and you decide where it goes (Files, an external drive, another device). Nothing is transmitted, and there is no server to transmit it to. Recovery is the reverse: import the file, enter the passphrase, and vault access is restored on the new device.
+
+**Q: Can I verify the implementation?** A: Yes. The export/import code is published in this repository at [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift).
 
 ---
 

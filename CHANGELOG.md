@@ -4,6 +4,25 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-07-14 – Version 2.5.7
+
+A security-focused release: stronger protection for high-risk situations, and a way to recover your vault if a device is lost or reset. As always, everything runs on-device — nothing is uploaded.
+
+**New in 2.5.7**
+
+- **Vault Key Backup & Recovery (Pro):** your vault key is device-bound (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), which is the right default for security — but it also means a lost or reset phone can lock you out of your own vault forever. You can now export a recovery key, wrapped with a passphrase you choose (PBKDF2-SHA256, 600k iterations, then AES-GCM), to a `.nudefndrkey` file you store wherever you like. It is fully air-gapped — nothing is uploaded — and useless to anyone without the passphrase. Import it on a new device to restore access.
+- **Hardened duress protections (Pro):** additional safeguards for high-risk situations. The optional secondary PINs are now stored as salted PBKDF2-SHA256 credentials in the Keychain (previously an unsalted hash), so they can't be lifted from a device backup and brute-forced; existing setups upgrade automatically, with no risk of lockout. 2.5.7 also adds an optional last-resort safeguard, gated behind a completed key backup so it can never be triggered as an accidental data-loss trap. We keep the exact behaviour of these features deliberately underspecified — for tools meant to protect you under pressure, that opacity is part of the protection.
+- **Ambient status surfaces:** Lock Screen widgets, a Protection widget that matches your selected theme, the ghost mascot within the Ghost theme itself, and a branded Instant Lock control.
+- **Clearer action confirmations** after photos are moved to the Vault, deleted, or cleared.
+
+**Transparency repository**
+
+- Published [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) — the passphrase-wrapped, upload-free vault key export/import — and added it to the "Verify It Yourself" table.
+
+As always: all scanning, detection, encryption, and recovery happen locally on your device. Nothing is sent to a server.
+
+---
+
 ## 2026-07-09 – Version 2.5.6
 
 Our biggest feature release in a while. As always, every one of these runs entirely on-device — nothing here sends your photos, documents, or location anywhere.
