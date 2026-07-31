@@ -4,6 +4,27 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-07-25 – Version 2.5.8
+
+A security and honesty release: a mode for higher-risk situations, a fix for what the app switcher could reveal, full-quality Vault storage, and telling you the whole truth about deletion.
+
+**New in 2.5.8**
+
+- **Travel Mode (Pro):** an optional posture for situations where the phone might leave your hands unlocked. While it is on, the Vault opens only with a PIN you choose — biometrics will not open it. A face can be pointed at a camera; a code you have not said out loud cannot. Travel Mode also hides the vault button, forces Ultra Stealth, and suppresses the scan Live Activity, so nothing about the app advertises that a vault exists. Turning it off requires the same PIN. As with our other protections for people under pressure, the precise behaviour when an incorrect PIN is entered is deliberately underspecified — that opacity is part of the protection.
+- **App-switcher privacy:** iOS snapshots every app when it leaves the foreground and uses that image as the app-switcher thumbnail. Previously that snapshot could capture an open Vault, meaning vault contents were visible from the switcher without unlocking anything. The app now covers itself with an opaque screen the moment it stops being active — unconditionally, for every user, independent of App Lock, subscription status, and the vault's own lock state. Applied per presentation layer, including the full-screen photo viewer, which renders above the main view hierarchy.
+- **Full-quality Vault storage:** photos entering the Vault were being taken from the scanner's image pipeline, which downscales to 1536px and re-encodes as JPEG to keep scanning fast. That is right for analysis and wrong for archival — a 12-megapixel photo lost roughly 85% of its pixels, and anyone who deleted the original after vaulting lost that quality permanently. Vault intake now takes the asset's original bytes, at full resolution, with no re-encode. EXIF and GPS stripping still runs, and now refuses to fall back to unstripped data if it fails. Photos vaulted before 2.5.8 are unaffected and remain at their stored resolution.
+- **Vault key reminders:** the app now tells you when your vault key has not been backed up, both at the moment you first vault photos and in Vault settings. Key backup shipped in 2.5.7, but nothing pointed you at it — and an iCloud restore brings back the encrypted files without the device-bound key that opens them.
+- **Sharing check hardening:** the share-sheet check previously examined only the first photo of a multi-photo send, and did not appear at all when more than one photo was selected. It now checks every photo. It also no longer fails open: if Apple's Sensitive Content Warning is disabled in iOS Settings the analyzer reports everything as clean, which was indistinguishable from a genuine all-clear. The check now reports that it could not verify your photos rather than implying they are safe.
+- **Recently Deleted disclosure:** deleting a photo has never been instant on iOS — the system keeps it recoverable in the Recently Deleted album for up to 30 days. NuDefndr now says so plainly after every removal, and offers a shortcut into Photos so you can empty Recently Deleted and make it final. We would rather tell you about a platform limitation than let a false sense of finality stand.
+- **Metadata-free Vault guarantee:** photos entering the Vault are explicitly passed through the same EXIF/GPS stripping engine used by the Location Cleaner before encryption, and the stripper is now verified against HEIC as well as JPEG — HEIC being the format most iPhones actually produce.
+- **VoiceOver support for protection state:** the ghost's eye color carries scan and protection state throughout the app — which excluded VoiceOver users and anyone with color-vision deficiency. The home hero card, protection widgets, vault status headers, and the scan Live Activity (including the compact Dynamic Island states) now describe their state as text to assistive technologies.
+- **Corrected cipher disclosure:** several screens described the Vault's encryption as AES-256. The Vault has always used ChaCha20-Poly1305 with a 256-bit key. Both are strong, but the label was wrong, and a transparency project that misstates its own primitives is worth less than one that corrects itself. Every surface now names the cipher accurately. (The separate key-backup file format does use AES-GCM to wrap the exported key — that part was always correct.)
+- **Interface consistency:** square-cornered themes no longer show rounded card surfaces, plus wider translation coverage and internal cleanup.
+
+As always: all scanning, detection, encryption, and stripping happen locally on your device. Nothing is sent to a server.
+
+---
+
 ## 2026-07-14 – Version 2.5.7
 
 A security-focused release: stronger protection for high-risk situations, and a way to recover your vault if a device is lost or reset. As always, everything runs on-device — nothing is uploaded.
@@ -508,6 +529,49 @@ For app versions prior to 1.5.2 (pre-June 2025), see the [App Store listing](htt
 ---
 
 ## Repository Documentation Updates
+
+### 2026-07-26
+
+**Corrections**
+
+A review of this repository against the shipping code found several claims that
+were wrong or overstated. Correcting them in public, because a transparency
+project that misstates its own behaviour is worth less than one that fixes it.
+
+- **"Zero network activity" was false.** The README and FAQ claimed the app was
+  100% offline with zero network activity. NuDefndr validates App Store
+  subscriptions through RevenueCat, which makes requests on launch and whenever
+  entitlements are checked. It sees an anonymous subscriber identifier and
+  entitlement status — no photos, no scan data — and it remains the app's only
+  outbound traffic, with no analytics SDK, crash reporter or tracking. But
+  "zero network activity" was not true and is now stated accurately.
+- **"Vault paths are explicitly excluded from iCloud backups" was false.** No
+  backup-exclusion attribute is set; encrypted vault files can appear in a
+  backup. The protection is that the *key* is
+  `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and never syncs, so restored
+  ciphertext cannot be opened — which is why Key Recovery exists. The
+  CHANGELOG already described that behaviour correctly; the README and
+  ARCHITECTURE contradicted it.
+- **PBKDF2 iteration counts were wrong and understated.** The docs cited 100,000
+  iterations as the app's key derivation. The vault key is not derived at all —
+  it is random and Keychain-stored. Production PBKDF2 is 310,000 iterations for
+  PIN credentials and 600,000 for key-backup passphrase wrapping. The published
+  `VaultEncryption.swift` helper that carries the 100,000 figure is not the
+  vault's key path and is now annotated as such.
+- **Removed incorrect terminology.** "Hardware-level tamper detection"
+  (Poly1305 is a software MAC), "forward secrecy" (there is no session key
+  exchange; vault files use one long-lived key), "keys… bound to the physical
+  hardware" (a Keychain accessibility class, not Secure Enclave), and "zero disk
+  persistence" for a key that is deliberately persisted in the Keychain.
+- **Audit Trail description corrected.** It was described as an "immutable
+  ledger" that is "strictly append-only". It is a JSON file in the app
+  container, it can be cleared from within the app behind Face ID, and anyone
+  with filesystem access could alter it. It is a personal record, not forensic
+  evidence.
+- **Background-scan guidance corrected.** The FAQ previously suggested turning
+  App Lock off to diagnose background scans. App Lock does not gate background
+  scans; iOS scheduling budgets do. No one should be advised to weaken a
+  security setting as a troubleshooting step.
 
 ### 2026-01-16
 

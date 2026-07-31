@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.5.7-blue)
+![Version](https://img.shields.io/badge/version-2.5.8-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-07-14 – Version 2.5.7**
+**2026-07-25 – Version 2.5.8**
 
-Stronger protection for high-risk situations, and vault recovery. Adds an encrypted, passphrase-protected Vault Key Recovery so a lost or reset device can't lock you out; a Distress PIN that permanently erases the vault when entered under duress; a hardened Panic PIN; a root-isolated decoy audit trail; and Lock Screen widgets. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Security and honesty. A new Travel Mode (Pro) lets the Vault be opened only with a PIN you choose, with biometrics disabled while it is active. The app now hides its contents from the iOS app-switcher snapshot, which could previously reveal an open Vault without anything being unlocked. Vault intake was taking the scanner's downscaled image rather than the original — photos now enter the Vault at full resolution, with EXIF and GPS still stripped. The share-sheet check no longer examines only the first photo of a multi-photo send, and no longer fails open when iOS Sensitive Content Warning is disabled. Several screens also described the Vault cipher as AES-256; it has always been ChaCha20-Poly1305, as documented here, and the app now says so too. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
@@ -36,12 +36,12 @@ Stronger protection for high-risk situations, and vault recovery. Adds an encryp
 
 ## Security Architecture
 
-- **ChaCha20-Poly1305 AEAD:** 256-bit authenticated encryption with hardware-level tamper detection.
-- **Ephemeral Keys:** Automatic RAM purge on app suspension; zero disk persistence.
-- **Device-Bound Storage:** Enforced `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` protection.
-- **Key Derivation:** PBKDF2, 100k iterations, SHA-256.
-- **Zero Telemetry:** 100% offline-first. Zero network activity, zero tracking hooks.
-- **No Cloud Leakage:** Vault paths are explicitly excluded from iCloud backups.
+- **ChaCha20-Poly1305 AEAD:** 256-bit authenticated encryption. The Poly1305 tag is verified on every decrypt, so modified or forged ciphertext fails to open rather than returning garbage.
+- **Random vault key:** the vault key is a 256-bit key from the system CSPRNG — not derived from a PIN or passphrase. It lives in the Keychain and is dropped from RAM when the app leaves the foreground; no decrypted photo data is ever written to disk.
+- **Device-bound storage:** the key is stored `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so it is readable only while the device is unlocked and never migrates to another device or to iCloud.
+- **Key derivation, where it is actually used:** PBKDF2-HMAC-SHA256 at 310,000 iterations for PIN credentials, and 600,000 iterations for the passphrase that wraps an exported key-backup file. The vault key itself is random, so no derivation is involved in opening the vault.
+- **No telemetry:** no analytics SDK, no tracking, no crash reporting. Your photos, scan results, audit logs and vault contents never leave the device. The app's only network traffic is App Store subscription validation through RevenueCat, which sees an anonymous subscriber identifier and your entitlement status — no photos, no scan data, no personal identifiers.
+- **Backups:** encrypted vault files may be included in an iCloud or device backup, but the key is device-only and never syncs. Ciphertext restored onto another device cannot be opened — which is exactly why [Key Recovery](CHANGELOG.md) exists.
 
 ## Verify It Yourself
 
@@ -49,7 +49,7 @@ The published sources back the claims above directly — read the file, not just
 
 | Source | Backs |
 |--------|-------|
-| [`Sources/Vault/VaultEncryption.swift`](Sources/Vault/VaultEncryption.swift) | ChaCha20-Poly1305 AEAD, 256-bit keys, PBKDF2 (100k iterations, SHA-256) |
+| [`Sources/Vault/VaultEncryption.swift`](Sources/Vault/VaultEncryption.swift) | ChaCha20-Poly1305 AEAD seal/open and 256-bit random key generation — the vault's actual encryption path |
 | [`Sources/Vault/KeychainManager.swift`](Sources/Vault/KeychainManager.swift) | Device-bound key storage via `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — keys never leave the device |
 | [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) | Passphrase-wrapped vault key export/import (PBKDF2-SHA256 200k + AES-GCM) — air-gapped `.nudefndrkey` file, never uploaded |
 | [`Sources/Scanner/ContentAnalyzer.swift`](Sources/Scanner/ContentAnalyzer.swift) | On-device `SensitiveContentAnalysis` wrapper — no network calls |
@@ -75,7 +75,7 @@ Replaces NuDefndr-Core (2024–2025, archived).
 
 ## Disclaimer
 
-Partial transparency release. Not independently audited. Use at your own risk.
+This is a partial source release: the security-critical components are published here, the full application is not. It has not been independently audited — if that matters for your threat model, weigh it accordingly.
 
 ## Contact
 

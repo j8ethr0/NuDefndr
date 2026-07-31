@@ -34,8 +34,19 @@ final class VaultEncryption {
 		return SymmetricKey(size: .bits256)
 	}
 	
-	/// Derive key from password using PBKDF2
-	/// Uses 100,000 iterations (OWASP recommendation for 2024+)
+	/// Derive a key from a password using PBKDF2.
+	///
+	/// NOTE: this is a general-purpose helper and is **not** the vault's key path.
+	/// The vault key is random (`generateKey()` above) and lives in the Keychain —
+	/// it is not derived from a PIN or passphrase, so PIN strength is not the
+	/// vault's cryptographic strength.
+	///
+	/// Where the shipping app actually runs PBKDF2-HMAC-SHA256, and at what cost:
+	///   * PIN credentials (Vault / Panic / Distress PINs): 310,000 iterations
+	///   * Passphrase wrapping an exported key-backup file: 600,000 iterations
+	///     — see `VaultKeyBackup.swift` in this repository.
+	/// The 100,000 below is the floor this helper was written against; do not read
+	/// it as the app's PIN or key-backup work factor.
 	static func deriveKey(from password: String, salt: Data) throws -> SymmetricKey {
 		guard let passwordData = password.data(using: .utf8) else {
 			throw EncryptionError.invalidData
