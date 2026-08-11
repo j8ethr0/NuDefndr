@@ -22,11 +22,6 @@ Photo Library → SensitiveContentAnalysis (on-device) → Vault (encrypted)
 - Reported storage size is computed by summing encrypted file sizes via `FileManager` resource values — vault content is never decrypted to measure usage.
 - Only file metadata (byte counts) is read, so the figure is available while the vault is locked without exposing plaintext.
 
-## Vault Storage Metrics
-
-- Reported storage size is computed by summing encrypted file sizes via `FileManager` resource values — vault content is never decrypted to measure usage.
-- Only file metadata (byte counts) is read, so the figure is available while the vault is locked without exposing plaintext.
-
 ## Security Guarantees
 
 - **Authenticated encryption:** ChaCha20-Poly1305 AEAD. A modified or forged ciphertext fails the Poly1305 tag check and refuses to open.

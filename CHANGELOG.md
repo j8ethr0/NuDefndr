@@ -4,6 +4,25 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-08-09 – Version 2.5.9
+
+A usability release, with two corrections worth stating plainly: a paid feature that kept working after people stopped paying for it, and a way the Vault PIN could be replaced by someone who did not know it.
+
+**New in 2.5.9**
+
+- **Direct Vault import:** photos could previously only reach the Vault through the review screen after a scan, or via the share extension. That works if the app agrees with you about which photos are sensitive, and not otherwise — anyone who already knew which photo they wanted protected had to run a full library scan and hope. You can now pick photos straight into the Vault from your library. Import runs through the same path as the review flow, so it inherits full-resolution intake, EXIF and GPS stripping, audit logging, and the Travel Mode guard rather than re-implementing any of them. You choose whether the originals stay in Photos.
+- **Free tier presentation:** Pro features in Settings rendered as a column of individually locked rows — seven consecutive ones in Vault, five in Scanning — which buried the settings a free user can actually change. Each section now shows its Pro features as a single named group. Nothing is hidden: every feature is still listed by name, because a free user is entitled to know exactly what the paid tier contains.
+- **Vault PIN change now requires the current PIN.** Previously the "Change Vault PIN" control dropped into the same form used to set one for the first time, and did not ask for the existing code. Anyone with the unlocked phone could therefore replace the Vault PIN with one of their own. The owner would not necessarily find out: because an incorrect PIN behaves the way it does, they would arm Travel Mode later, enter what they believed was their code, and be shown a plausible result. Changing the PIN now requires the current one, and is rate-limited by the same attempt throttle as every other PIN entry.
+- **Premium themes now follow the subscription.** Themes are a Pro feature, but the selected theme was stored as an ordinary preference with nothing checking entitlement — so a lapsed subscriber kept using a paid theme indefinitely. It was the only Pro feature that carried on working after the entitlement ended. The rendered theme now falls back to Essential without an active subscription, in the app and in the home-screen widget. The choice itself is preserved rather than erased, so resubscribing restores it.
+- **Travel Mode refinements:** arming now confirms what it changes before it takes effect, rather than switching silently. PIN fields show how many digits have been entered, matching the vault pad. The attempt-throttle lock-out now counts down live; it previously displayed a fixed number of seconds that never moved, which at the top of the escalation ladder meant an unchanging "3600 seconds" for an hour.
+- **Panic PIN is now the Ghost PIN.** A rename only — the feature, the stored credential, and the behaviour are unchanged. "Panic" announced itself in a settings list, and sat one row from "Distress PIN" while meaning something entirely different. Two near-synonyms for two features with opposite consequences is a poor thing to rely on remembering under pressure.
+- **Purchase and restore reporting:** Restore Purchases now states its outcome. A restore that completes but finds no purchase on the signed-in Apple Account — the most common result — previously changed nothing on screen and was indistinguishable from a control that did not work. Store errors are now reported in terms of what to do next rather than as raw framework text. Subscription status in Settings also now reflects the current entitlement rather than the one read at launch.
+- **Documentation:** the in-app FAQ gains entries for Travel Mode, the Ghost PIN, the Distress PIN, vault key backup, key recovery, and document detection.
+
+As always: all scanning, detection, encryption, and stripping happen locally on your device. Nothing is sent to a server.
+
+---
+
 ## 2026-07-25 – Version 2.5.8
 
 A security and honesty release: a mode for higher-risk situations, a fix for what the app switcher could reveal, full-quality Vault storage, and telling you the whole truth about deletion.

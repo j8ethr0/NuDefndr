@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.5.8-blue)
+![Version](https://img.shields.io/badge/version-2.5.9-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-07-25 – Version 2.5.8**
+**2026-08-09 – Version 2.5.9**
 
-Security and honesty. A new Travel Mode (Pro) lets the Vault be opened only with a PIN you choose, with biometrics disabled while it is active. The app now hides its contents from the iOS app-switcher snapshot, which could previously reveal an open Vault without anything being unlocked. Vault intake was taking the scanner's downscaled image rather than the original — photos now enter the Vault at full resolution, with EXIF and GPS still stripped. The share-sheet check no longer examines only the first photo of a multi-photo send, and no longer fails open when iOS Sensitive Content Warning is disabled. Several screens also described the Vault cipher as AES-256; it has always been ChaCha20-Poly1305, as documented here, and the app now says so too. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Usability, and two corrections. Photos can now be imported straight into the Vault without running a scan first, through the same pipeline as the review flow — full resolution, metadata stripped. Pro features in Settings are grouped rather than listed as a column of locked rows, so a free user can find the settings they can actually change. The two corrections: the "Change Vault PIN" control did not ask for the existing PIN, so anyone holding the unlocked phone could replace it; it now does, rate-limited by the same throttle as every other PIN entry. And premium themes kept working after a subscription lapsed — the only Pro feature that did — which now falls back to Essential while preserving the user's choice for resubscription. Travel Mode gains an arming confirmation and a lock-out timer that actually counts down, and the Panic PIN is renamed the Ghost PIN. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
