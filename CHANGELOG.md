@@ -4,7 +4,7 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
-## 2026-08-09 – Version 2.5.9
+## 2026-08-11 – Version 2.5.9
 
 A usability release, with two corrections worth stating plainly: a paid feature that kept working after people stopped paying for it, and a way the Vault PIN could be replaced by someone who did not know it.
 

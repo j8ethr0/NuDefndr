@@ -16,7 +16,7 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-08-09 – Version 2.5.9**
+**2026-08-11 – Version 2.5.9**
 
 Usability, and two corrections. Photos can now be imported straight into the Vault without running a scan first, through the same pipeline as the review flow — full resolution, metadata stripped. Pro features in Settings are grouped rather than listed as a column of locked rows, so a free user can find the settings they can actually change. The two corrections: the "Change Vault PIN" control did not ask for the existing PIN, so anyone holding the unlocked phone could replace it; it now does, rate-limited by the same throttle as every other PIN entry. And premium themes kept working after a subscription lapsed — the only Pro feature that did — which now falls back to Essential while preserving the user's choice for resubscription. Travel Mode gains an arming confirmation and a lock-out timer that actually counts down, and the Panic PIN is renamed the Ghost PIN. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
