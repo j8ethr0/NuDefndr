@@ -6,7 +6,7 @@ What it does
 - Enables Apple’s on-device models to help detect sensitive content.
 - Third-party apps using the SensitiveContentAnalysis framework benefit when this system feature is enabled.
 
-NudeFndr behavior
+NuDefndr behavior
 - The app surfaces whether the system feature appears available and guides users to enable it if needed.
 - No data leaves the device. There is no network activity.
 

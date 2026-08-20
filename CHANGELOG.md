@@ -4,6 +4,22 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-08-16 – Version 2.6.0
+
+An interface release: NuDefndr's whole app gets a new flat band design — full-bleed rows, no borders or corners, one accent-filled element per screen.
+
+**New in 2.6.0**
+
+- New flat band interface across every theme, including new theme MNML.
+- Settings, the Results/Review action footers, and the Vault unlock control redesigned to match.
+- Replaced the floating system back button with an in-row chevron; the edge-swipe-back gesture is preserved.
+- Rebuilt DE-AD's typeface scaling, previously inconsistent down to sub-pixel strokes.
+- Redesigned selection and redaction markers.
+
+As always: all scanning, detection, encryption, and stripping happen locally on your device. Nothing is sent to a server.
+
+---
+
 ## 2026-08-11 – Version 2.5.9
 
 A usability release, with two corrections worth stating plainly: a paid feature that kept working after people stopped paying for it, and a way the Vault PIN could be replaced by someone who did not know it.

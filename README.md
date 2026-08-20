@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.5.9-blue)
+![Version](https://img.shields.io/badge/version-2.6.0-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-08-11 – Version 2.5.9**
+**2026-08-16 – Version 2.6.0**
 
-Usability, and two corrections. Photos can now be imported straight into the Vault without running a scan first, through the same pipeline as the review flow — full resolution, metadata stripped. Pro features in Settings are grouped rather than listed as a column of locked rows, so a free user can find the settings they can actually change. The two corrections: the "Change Vault PIN" control did not ask for the existing PIN, so anyone holding the unlocked phone could replace it; it now does, rate-limited by the same throttle as every other PIN entry. And premium themes kept working after a subscription lapsed — the only Pro feature that did — which now falls back to Essential while preserving the user's choice for resubscription. Travel Mode gains an arming confirmation and a lock-out timer that actually counts down, and the Panic PIN is renamed the Ghost PIN. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+NuDefndr's interface is redesigned in a new flat band style, applied across every theme. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
@@ -51,7 +51,7 @@ The published sources back the claims above directly — read the file, not just
 |--------|-------|
 | [`Sources/Vault/VaultEncryption.swift`](Sources/Vault/VaultEncryption.swift) | ChaCha20-Poly1305 AEAD seal/open and 256-bit random key generation — the vault's actual encryption path |
 | [`Sources/Vault/KeychainManager.swift`](Sources/Vault/KeychainManager.swift) | Device-bound key storage via `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — keys never leave the device |
-| [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) | Passphrase-wrapped vault key export/import (PBKDF2-SHA256 200k + AES-GCM) — air-gapped `.nudefndrkey` file, never uploaded |
+| [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) | Passphrase-wrapped vault key export/import (PBKDF2-SHA256 600k + AES-GCM) — air-gapped `.nudefndrkey` file, never uploaded |
 | [`Sources/Scanner/ContentAnalyzer.swift`](Sources/Scanner/ContentAnalyzer.swift) | On-device `SensitiveContentAnalysis` wrapper — no network calls |
 | [`Sources/Scanner/DocumentDetectionService.swift`](Sources/Scanner/DocumentDetectionService.swift) | On-device Documents & IDs detection via Apple Vision — no network calls; conservative structural checks (Luhn / IBAN mod-97 / passport MRZ) |
 | [`Sources/Models/ScanResult.swift`](Sources/Models/ScanResult.swift) | Scan result model — local only, no telemetry fields |
