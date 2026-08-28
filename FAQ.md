@@ -4,7 +4,20 @@
 
 **Q: Does NuDefndr send my photos or scan results anywhere?** A: No. All image analysis, classification, encryption and metadata stripping happen entirely on-device. Your photos, scan results, audit logs and vault contents are never transmitted.
 
-**Q: So the app makes no network requests at all?** A: It makes one kind. Subscription status is validated through RevenueCat, the App Store billing layer, which runs on every launch and whenever entitlements are checked. It sees an anonymous subscriber identifier and whether you hold a Pro entitlement — no photos, no scan data, no email, no device identifiers we control. That is the app's only outbound traffic. There is no analytics SDK, no crash reporter and no tracking. If you run NuDefndr behind a proxy you will see those subscription calls and nothing else — we would rather you find that here than there.
+**Q: So the app makes no network requests at all?** A: Two, and neither carries anything about your photos. Subscription status is validated through RevenueCat, the App Store billing layer, which sees an anonymous subscriber identifier and whether you hold a Pro entitlement. And the FAQ screen loads this FAQ from nudefndr.com, so the in-app version cannot drift out of date — the page, its stylesheet, its script and its font, all from the same host and none from anywhere else. Those requests tell our web host an IP address and which language page was asked for, the same as any browser, and only when you open that screen. There is no analytics SDK, no crash reporter and no tracking. Run NuDefndr behind a proxy and those two are all you will see.
+
+**Q: You use RevenueCat. How do I know you are not using it for analytics?** A: Read the calls. [`Sources/Purchases/PurchaseManager.swift`](Sources/Purchases/PurchaseManager.swift) is every RevenueCat call the app makes, bar one: the SDK is initialised at app launch with a single `Purchases.configure(withAPIKey:)` taking the public client key and no other options. What is *absent* is the part that matters, because RevenueCat's data collection is opt-in through APIs the app has to call:
+
+| API | What it would do | Used |
+|---|---|---|
+| `setAttributes`, `setEmail`, `setDisplayName`, `setPhoneNumber` | attach subscriber attributes | no |
+| `attribution`, Apple Search Ads / AdServices collection | ad attribution | no |
+| `logIn` / `logOut` / a custom app user ID | tie purchases to an identity | no |
+| `RevenueCatUI` | their paywall components, which emit their own events | no |
+
+There is no account system, so there is no identity to attach anything to — purchases run against RevenueCat's own anonymous identifier (`$RCAnonymousID:…`), which is visible to anyone watching the traffic.
+
+**The honest limit:** this proves what the app *sends*. It cannot prove what is switched on inside a RevenueCat dashboard, because that is server-side configuration and no client code can attest to it. No integrations are enabled — nothing is forwarded from RevenueCat to any analytics or advertising service — but you have our word for that part, not our source. If that is not good enough for your threat model, the check that does not require trusting us is a proxy: put NuDefndr behind mitmproxy or Charles and watch. You will see subscription calls and, when you open the FAQ, one request for the FAQ page.
 
 **Q: What encryption standard does NuDefndr use?** A: ChaCha20-Poly1305 (256-bit AEAD authenticated encryption).
 
@@ -12,7 +25,9 @@
 
 **Q: Are my encrypted vault files included in an iCloud backup?** A: They can be — they are ordinary files in the app's container. The key is not, because it is device-only. So a restored backup brings back unopenable ciphertext unless you also exported a key backup. That is the whole reason Key Recovery exists.
 
-**Q: What happens to decrypted vault data in memory?** A: Backgrounding the app locks the vault, releases the key from memory, and clears both the decrypted image cache and the on-disk thumbnail cache. A separate 60-second timer repeats that cleanup if the app is left backgrounded. No decrypted photo data is written to disk at any point.
+**Q: What happens to decrypted vault data in memory?** A: Backgrounding the app locks the vault, releases the key from memory, and drops every decrypted image held in memory. A separate 60-second timer repeats that cleanup if the app is left backgrounded. No decrypted photo data is written to disk at any point.
+
+**Q: Does the app keep thumbnails of my vault photos on disk?** A: Yes, and they are encrypted. Each one is sealed with ChaCha20-Poly1305 under a key derived from your vault key, so a locked vault cannot read its own thumbnails any more than anyone else can. They deliberately survive a lock — regenerating them all on every app switch is slow and buys nothing once they are sealed — and they are deleted outright when the vault itself is destroyed or cleared. They are excluded from iCloud backups. Older versions of the app cached these thumbnails unencrypted; updating deletes any that were left behind, once, on first launch.
 
 **Q: What does the encryption actually protect against?** A: Someone with access to the app's files — via a backup, a forensic image, or the filesystem — cannot read vault contents, because the key is device-only and never appears in a backup. The Poly1305 authentication tag means altered ciphertext fails to open rather than decrypting to something wrong. It does not protect against someone who has your unlocked phone and your credentials; that is what App Lock, the Vault PIN and Travel Mode are for.
 
@@ -101,7 +116,7 @@ It logs events including:
 
 **Q: Where is the Audit Log stored?** A: Locally within isolated app storage. It is never synced, backed up, or exported automatically.
 
-**Q: Can the Audit Log be edited?** A: Not from inside the app — entries are appended and there is no edit affordance. It is a JSON file in the app's container, not a tamper-evident ledger: you can clear the whole log (which requires Face ID), and anyone with filesystem access to the container could alter it. Treat it as a personal record of what the app did, not as forensic evidence.
+**Q: Can the Audit Log be edited?** A: Not from inside the app — entries are only ever added, never edited, and there is no affordance to change one. (Mechanically the file is rewritten in full on each new entry rather than extended, so do not read "append-only" as a storage guarantee.) It is a JSON file in the app's container, not a tamper-evident ledger: you can clear the whole log (which requires Face ID, Touch ID or your device passcode), and anyone with filesystem access to the container could alter it. Treat it as a personal record of what the app did, not as forensic evidence.
 
 ---
 

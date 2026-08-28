@@ -4,6 +4,31 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-08-25 – Version 2.6.1
+
+A vault and location release: encrypted vault thumbnails, a vault that reports its own state, and location data you can clean one place at a time.
+
+**New in 2.6.1**
+
+- **Encrypted vault thumbnails.** Grid thumbnails were written to the app container as ordinary JPEGs and wiped whenever the app was backgrounded — readable copies of vault photos, on disk, for as long as the app was open. Each one is now sealed with ChaCha20-Poly1305 under a subkey of the vault key (HKDF-SHA256), so they can survive a lock without being readable: locking releases the key that opens them. Reopening the vault is also far quicker, at 0.6 ms per thumbnail against 21.6 ms to decrypt and downsample from scratch. Updating deletes any unencrypted thumbnails an older version left behind. **This means ARCHITECTURE.md's "no plaintext copy of a vault photo is written anywhere" was not true before this release. It is now.**
+- **Vault health.** Item count, size on disk, whether your key is backed up, and when the vault was last opened. Nothing is decrypted to produce it, and it is not shown before you authenticate.
+- **Key-not-saved notice.** The vault now tells you when no key backup exists, where you are actually looking at the photos a lost device would take with it.
+- **Location cleaning, by place.** Geotagged photos are grouped into the places you have been, and you choose which places — or which photos within a place — to strip. Grouping is computed on-device from coordinates, with no geocoding request, which is why places are described by extent and date rather than by name. An interrupted clean is reconciled at next launch and recorded in the audit trail. GPS removal cannot be undone, and the confirmation itemises what it will change.
+- **After a scan.** When a scan flags something new, the app says the photos are still in your library and offers to take you to review them.
+
+**Also fixed**
+
+- **Completed-scan report on every theme.** MNML replaces the home screen wholesale, so it never reached the view that reports a finished scan — and because the pending report is cleared once read, it was lost rather than delayed.
+- **Free-tier Settings** showed a substitute screen listing Pro features instead of the settings a free user can change.
+- **Display type alignment.** Values falling back to the monospaced face sat roughly 14pt above the label they belong to; this affected every non-Latin translation.
+- **Vault lock screen** read "VAULT SECURED" above "147 ITEMS SECURED". The count line now states the count only.
+- **Home scanned count** reported the last run rather than the library, so an incremental scan with nothing new displayed zero.
+- **Light mode.** Band surfaces were drawn in each theme's page colour, leaving them no ground to sit on, and several controls carried dark-mode values into the light path.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted. [FAQ.md](FAQ.md) lists what does go out.
+
+---
+
 ## 2026-08-16 – Version 2.6.0
 
 An interface release: NuDefndr's whole app gets a new flat band design — full-bleed rows, no borders or corners, one accent-filled element per screen.
@@ -564,6 +589,41 @@ For app versions prior to 1.5.2 (pre-June 2025), see the [App Store listing](htt
 ---
 
 ## Repository Documentation Updates
+
+### 2026-08-26
+
+**Corrections**
+
+- **The 2.6.1 notes described the wrong release.** They summarised it as theme and text fixes. The release is the encrypted thumbnail cache, vault health, the key-backup notice, the rebuilt Location Cleaner and the post-scan prompt — including that vault thumbnails were previously written unencrypted. Rewritten from the shipped code.
+- **Published the code behind both network requests.** `PurchaseManager.swift`,
+  `ProEntitlementCache.swift`, `FAQDocumentStore.swift` and `FAQWebPage.swift` are
+  now in `Sources/`, so the claim that RevenueCat is used for entitlements and
+  nothing else is readable rather than assertable. FAQ.md states what that does and
+  does not prove.
+- **ARCHITECTURE.md gained a Network section**, listing what leaves the device in one place. The FAQ screen now loads the FAQ from the website rather than shipping a second copy, which adds a request; it is listed there and in FAQ.md.
+- **Four published files were not the app's code.** `ScanResult.swift`,
+  `ContentAnalyzer.swift`, `KeychainManager.swift` and `VaultEncryption.swift`
+  named types that do not exist in NuDefndr — they were written for this
+  repository to illustrate the mechanism, while the README told you to "read the
+  file, not just the description". They have been replaced with the real
+  `SensitiveAsset`, `SensitiveContentService`, `KeychainHelper` and
+  `KeyDerivation`, under their real names.
+
+  Two of the removed files understated the app. `ContentAnalyzer` showed a single
+  analysis pass where the app runs two, the second on a re-scaled image, so the
+  published code implied lower detection sensitivity than ships. It also declared
+  `@available(iOS 17.0, *)` for an app that requires iOS 18.
+- **The published key-backup file was weaker than the shipping one.** Its recovery
+  path took the PBKDF2 iteration count out of the `.nudefndrkey` file and used it
+  unchecked; the app bounds it to between 100,000 and 5,000,000 and rejects
+  anything outside, so a tampered file cannot lower its own work factor. The
+  published `BackupFile` was also missing the `root` field, meaning a file written
+  by the published code would have been rejected by the real importer. It is now
+  the shipping file.
+- **Published files are now generated from the shipping source**, with debug-only
+  branches resolved to the release build so that what is published is what runs.
+  `DocumentDetectionService.swift` regained the Japanese, Thai and Chinese
+  credential and identity keywords that the earlier hand-trimmed copy had dropped.
 
 ### 2026-07-26
 

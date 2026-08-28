@@ -1,5 +1,8 @@
 // NudeFndr - nudefndr.com
-// Transparency Repository - On-device document & ID detection (v2.5.6)
+// Transparency Repository - Documents & IDs detection (v2.6.1)
+
+// DocumentDetectionService.swift
+// Main app target only.
 
 import Foundation
 import Vision
@@ -7,13 +10,12 @@ import UIKit
 import ImageIO
 
 /// On-device detection of photos that expose documents, payment cards, or
-/// credentials — the "sensitive" most people forget they have in their library.
-/// Runs entirely locally via Apple's Vision framework. NO network activity.
+/// credentials — the "sensitive" most people forget they have in their
+/// library. Runs entirely locally via Vision; nothing leaves the device.
 ///
 /// Detection is deliberately conservative: every signal needs a structural
-/// check (card Luhn checksum, IBAN mod-97, passport MRZ shape) or an explicit
-/// credential phrase, so ordinary receipts, menus, and screenshots don't flood
-/// results. This feature is OFF by default and opt-in in Settings.
+/// check (Luhn, IBAN mod-97, MRZ shape) or an explicit credential phrase, so
+/// ordinary receipts, menus, and screenshots don't flood results.
 final class DocumentDetectionService {
 
     enum Finding: String, CaseIterable {
@@ -30,11 +32,18 @@ final class DocumentDetectionService {
         var isSensitiveDocument: Bool { !findings.isEmpty }
     }
 
-    /// Text recognition doesn't need full-res; this keeps the per-photo cost
-    /// bounded on large libraries.
+    /// Max dimension for analysis — text recognition doesn't need full-res,
+    /// and this keeps the per-photo cost bounded on large libraries.
     private static let maxAnalysisPixels: CGFloat = 1600
 
     // MARK: - Public
+
+    func analyzeImage(imageData: Data) async -> DetectionResult {
+        guard let cgImage = Self.downscaledImage(from: imageData) else {
+            return DetectionResult(findings: [])
+        }
+        return await analyze(cgImage: cgImage)
+    }
 
     func analyze(cgImage: CGImage) async -> DetectionResult {
         let lines = await recognizeText(in: cgImage)
@@ -50,9 +59,9 @@ final class DocumentDetectionService {
         if Self.containsSSN(joined) { findings.insert(.ssn) }
         if Self.containsCredentialPhrase(joinedLower) { findings.insert(.credential) }
 
-        // Document-shaped photo + identity keywords → likely a photographed ID.
-        // The segmentation check alone would flag every receipt, so it only ever
-        // acts as a booster for explicit identity terms.
+        // Document-shaped photo + identity keywords → likely a photographed
+        // ID. The segmentation check alone would flag every receipt, so it
+        // only ever acts as a booster for explicit identity terms.
         if findings.isEmpty, Self.containsIdentityKeywords(joinedLower) {
             if await looksLikeDocument(cgImage: cgImage) {
                 findings.insert(.governmentID)
@@ -62,7 +71,7 @@ final class DocumentDetectionService {
         return DetectionResult(findings: findings)
     }
 
-    // MARK: - Vision (on-device, no network)
+    // MARK: - Vision
 
     private func recognizeText(in cgImage: CGImage) async -> [String] {
         await withCheckedContinuation { continuation in
@@ -72,12 +81,14 @@ final class DocumentDetectionService {
                 continuation.resume(returning: lines)
             }
             request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = false // MRZ and card numbers aren't words.
+            // MRZ and card numbers are not dictionary words.
+            request.usesLanguageCorrection = false
 
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
                 try handler.perform([request])
             } catch {
+                AppLogger.photoLibrary.debug("Document text recognition failed: \(error.localizedDescription, privacy: .public)")
                 continuation.resume(returning: [])
             }
         }
@@ -86,12 +97,16 @@ final class DocumentDetectionService {
     private func looksLikeDocument(cgImage: CGImage) async -> Bool {
         await withCheckedContinuation { continuation in
             let request = VNDetectDocumentSegmentationRequest { request, _ in
-                let confident = (request.results as? [VNRectangleObservation])?
+                let hasConfidentDocument = (request.results as? [VNRectangleObservation])?
                     .contains { $0.confidence > 0.8 } ?? false
-                continuation.resume(returning: confident)
+                continuation.resume(returning: hasConfidentDocument)
             }
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do { try handler.perform([request]) } catch { continuation.resume(returning: false) }
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(returning: false)
+            }
         }
     }
 
@@ -102,6 +117,7 @@ final class DocumentDetectionService {
         let pattern = #"(?<!\d)(?:\d[ \-]?){12,18}\d(?!\d)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
         let range = NSRange(text.startIndex..., in: text)
+
         for match in regex.matches(in: text, range: range) {
             guard let r = Range(match.range, in: text) else { continue }
             let digits = text[r].compactMap { $0.wholeNumberValue }
@@ -131,6 +147,7 @@ final class DocumentDetectionService {
         let pattern = #"[A-Z]{2}\d{2}[A-Z0-9]{11,30}"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
         let range = NSRange(compact.startIndex..., in: compact)
+
         for match in regex.matches(in: compact, range: range) {
             guard let r = Range(match.range, in: compact) else { continue }
             if ibanChecksumValid(String(compact[r])) { return true }
@@ -163,6 +180,7 @@ final class DocumentDetectionService {
     static func containsMRZ(lines: [String]) -> Bool {
         let mrzCharset = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<")
         var mrzLineCount = 0
+
         for rawLine in lines {
             let line = rawLine.replacingOccurrences(of: " ", with: "")
             guard line.count >= 28, line.count <= 46 else { continue }
@@ -181,13 +199,20 @@ final class DocumentDetectionService {
         return text.range(of: pattern, options: .regularExpression) != nil
     }
 
-    /// Explicit credential phrases (multi-language). Deliberately phrase-level,
-    /// not the bare word "code", so discount-code screenshots don't count.
+    /// Explicit credential phrases across the app's supported languages.
+    /// Deliberately phrase-level, not the bare word "code" — screenshots of
+    /// discount codes shouldn't count.
     private static let credentialPhrases: [String] = [
         "verification code", "one-time password", "one time password",
         "recovery code", "recovery key", "backup code", "seed phrase",
         "recovery phrase", "private key", "your password is",
-        "temporary password", "2fa code", "security code is"
+        "temporary password", "2fa code", "security code is",
+        // ja
+        "確認コード", "認証コード", "リカバリーコード", "シークレットリカバリーフレーズ", "秘密鍵",
+        // th
+        "รหัสยืนยัน", "รหัสกู้คืน", "รหัสผ่านชั่วคราว",
+        // zh-Hans
+        "验证码", "恢复代码", "助记词", "私钥"
     ]
 
     static func containsCredentialPhrase(_ lowercasedText: String) -> Bool {
@@ -197,10 +222,28 @@ final class DocumentDetectionService {
     private static let identityKeywords: [String] = [
         "passport", "driving licence", "driver license", "driver's license",
         "identity card", "national id", "date of birth", "nationality",
-        "place of birth"
+        "place of birth",
+        // ja
+        "パスポート", "運転免許証", "生年月日",
+        // th
+        "หนังสือเดินทาง", "ใบขับขี่", "บัตรประชาชน",
+        // zh-Hans
+        "护照", "驾驶证", "身份证", "出生日期"
     ]
 
     static func containsIdentityKeywords(_ lowercasedText: String) -> Bool {
         identityKeywords.contains { lowercasedText.contains($0.lowercased()) }
+    }
+
+    // MARK: - Image handling
+
+    static func downscaledImage(from data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxAnalysisPixels
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }

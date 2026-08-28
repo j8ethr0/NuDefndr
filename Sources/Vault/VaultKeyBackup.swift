@@ -1,63 +1,98 @@
 // NudeFndr - nudefndr.com
-// Transparency Repository - Vault key backup & recovery (v2.5.7)
+// Transparency Repository - Vault key backup & recovery (v2.6.1)
 
 import Foundation
 import Security
-import CommonCrypto
 import CryptoKit
 
-/// Export and restore of the vault encryption key.
+/// Export and restore of the real (`.primary`) vault encryption key.
 ///
 /// The vault key lives in the Keychain as `WhenUnlockedThisDeviceOnly` — correct
-/// for security (it never syncs to iCloud), but it also means a device wipe or an
-/// iCloud-backup restore would leave an encrypted vault permanently unopenable.
-/// This gives the user a deliberate, air-gapped recovery path:
+/// for security (it never syncs to iCloud), but it means a device wipe or an
+/// iCloud-backup restore leaves the encrypted vault permanently unopenable. This
+/// gives the user a deliberate, air-gapped recovery path: the raw key is wrapped
+/// with a key derived from a user passphrase (PBKDF2-SHA256, 600,000 rounds) and
+/// sealed with AES-GCM, then written to a `.nudefndrkey` file the user saves
+/// wherever they choose (Files, an external drive, a second device). Nothing is
+/// ever uploaded, and the file is useless without the passphrase.
 ///
-///   1. The raw 256-bit vault key is wrapped with a key derived from a
-///      user-chosen passphrase (PBKDF2-HMAC-SHA256, 600,000 iterations).
-///   2. The wrapped key is sealed with AES-GCM (authenticated encryption).
-///   3. The result is written to a `.nudefndrkey` file the user saves wherever
-///      they choose — Files, an external drive, a second device.
-///
-/// Nothing is ever uploaded. The file is useless without the passphrase, and a
-/// wrong passphrase fails the AES-GCM authentication tag rather than silently
-/// producing a bad key. This mirrors the shipping implementation; app-specific
-/// Keychain and logging plumbing is elided for clarity.
+/// A successful export also sets the `hasExportedKey` Keychain flag. Anything
+/// that can destroy a vault is gated on it — a destructive last resort must never
+/// be armable before a recovery path exists.
 enum VaultKeyBackup {
 
     static let fileFormat = "nudefndr-vault-key"
-    private static let iterations = 600_000
+    static let fileExtension = "nudefndrkey"
+    private static let iterations = 600_000   // NIST SP 800-132 (2024) floor for PBKDF2-SHA256
+    private static let minIterations = 100_000 // reject a tampered file that lowers the work factor
+    private static let maxIterations = 5_000_000 // reject an absurd value that would hang import
     private static let saltByteCount = 16
     private static let keyByteCount = 32
+    private static let exportedFlagAccount = "com.dro1d.PicDefndr.hasExportedVaultKey"
 
     struct BackupFile: Codable {
         let format: String
         let version: Int
-        let salt: String        // base64, 16 random bytes
+        let root: String
+        let salt: String        // base64, 16 bytes
         let iterations: Int
-        let wrappedKey: String  // base64 of the AES-GCM combined box (nonce + ciphertext + tag)
-        let createdAt: String   // ISO-8601, informational only
+        let wrappedKey: String  // base64 of AES-GCM combined box (nonce + ciphertext + tag)
+        let createdAt: String   // ISO8601, informational only
     }
 
-    enum BackupError: Error {
+    enum BackupError: Error, LocalizedError {
+        case noVaultKey
         case cryptoFailed
         case invalidFile
         case wrongPassphraseOrCorrupt
+        case keychainSaveFailed
+
+        // NOTE: English literals for now — these UI strings are localized in the
+        // 2.6.0 release-plumbing pass (task #11) alongside the store metadata.
+        var errorDescription: String? {
+            switch self {
+            case .noVaultKey:
+                return "This vault has no key to export yet. Add something to your vault first, then try again."
+            case .cryptoFailed:
+                return "Something went wrong preparing the key. Please try again."
+            case .invalidFile:
+                return "That file isn't a NUDEFNDR vault key."
+            case .wrongPassphraseOrCorrupt:
+                return "Wrong passphrase, or the key file has been altered."
+            case .keychainSaveFailed:
+                return "Couldn't save the restored key to this device."
+            }
+        }
     }
 
-    // MARK: - Export
+    /// Whether the user has ever completed a key export. Gates the destructive
+    /// last-resort safeguard.
+    static var hasExportedKey: Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: exportedFlagAccount,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var out: AnyObject?
+        return SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess
+    }
 
-    /// Wrap `rawVaultKey` with a key derived from `passphrase` and encode the
-    /// `.nudefndrkey` payload. The caller writes the returned data to a file the
-    /// user picks; it never touches the network.
-    static func makeBackup(rawVaultKey: Data, passphrase: String) throws -> Data {
-        guard let salt = randomBytes(saltByteCount),
-              let wrappingKeyData = pbkdf2(passphrase: passphrase, salt: salt, iterations: iterations, keyLength: keyByteCount) else {
+    /// Export the primary vault key wrapped with `passphrase`. Returns a temp
+    /// file URL to hand to a share sheet. Throws `.noVaultKey` if the vault has
+    /// never been initialised (no key to export yet).
+    static func exportPrimaryKey(passphrase: String) throws -> URL {
+        guard let key = KeychainHelper.loadKey(forName: VaultRoot.primary.keychainName) else {
+            throw BackupError.noVaultKey
+        }
+        let rawKeyData = key.withUnsafeBytes { Data($0) }
+
+        guard let salt = KeyDerivation.randomBytes(saltByteCount),
+              let wrappingKeyData = KeyDerivation.pbkdf2SHA256(password: passphrase, salt: salt, iterations: iterations, keyLength: keyByteCount) else {
             throw BackupError.cryptoFailed
         }
         let wrappingKey = SymmetricKey(data: wrappingKeyData)
-
-        guard let sealed = try? AES.GCM.seal(rawVaultKey, using: wrappingKey),
+        guard let sealed = try? AES.GCM.seal(rawKeyData, using: wrappingKey),
               let combined = sealed.combined else {
             throw BackupError.cryptoFailed
         }
@@ -65,67 +100,84 @@ enum VaultKeyBackup {
         let file = BackupFile(
             format: fileFormat,
             version: 1,
+            root: "primary",
             salt: salt.base64EncodedString(),
             iterations: iterations,
             wrappedKey: combined.base64EncodedString(),
             createdAt: ISO8601DateFormatter().string(from: Date())
         )
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(file) else { throw BackupError.cryptoFailed }
-        return data
+        guard let data = try? encoder.encode(file) else {
+            throw BackupError.cryptoFailed
+        }
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NuDefndr-VaultKey.\(fileExtension)")
+        try? FileManager.default.removeItem(at: url)
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
+
+        setHasExportedKey(true)
+        AppLogger.security.info("Vault key exported (wrapped)")
+        return url
     }
 
-    // MARK: - Import
+    /// Read a `.nudefndrkey` file, unwrap with `passphrase`, and install the key
+    /// into the primary root's Keychain slot — restoring vault access. Throws
+    /// `.wrongPassphraseOrCorrupt` if the passphrase is wrong (AES-GCM auth fails)
+    /// and leaves the existing key untouched on any failure.
+    static func importKey(from url: URL, passphrase: String) throws {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
-    /// Recover the raw vault key from a `.nudefndrkey` payload. Throws
-    /// `.wrongPassphraseOrCorrupt` when the passphrase is wrong or the file was
-    /// tampered with — the AES-GCM authentication tag makes the two
-    /// indistinguishable, by design.
-    static func recoverKey(from fileData: Data, passphrase: String) throws -> Data {
-        guard let file = try? JSONDecoder().decode(BackupFile.self, from: fileData),
+        guard let data = try? Data(contentsOf: url),
+              let file = try? JSONDecoder().decode(BackupFile.self, from: data),
               file.format == fileFormat,
+              file.iterations >= minIterations, file.iterations <= maxIterations,
               let salt = Data(base64Encoded: file.salt),
               let combined = Data(base64Encoded: file.wrappedKey) else {
             throw BackupError.invalidFile
         }
 
-        guard let wrappingKeyData = pbkdf2(passphrase: passphrase, salt: salt, iterations: file.iterations, keyLength: keyByteCount) else {
+        guard let wrappingKeyData = KeyDerivation.pbkdf2SHA256(password: passphrase, salt: salt, iterations: file.iterations, keyLength: keyByteCount) else {
             throw BackupError.cryptoFailed
         }
         let wrappingKey = SymmetricKey(data: wrappingKeyData)
 
+        let rawKeyData: Data
         do {
             let sealed = try AES.GCM.SealedBox(combined: combined)
-            let raw = try AES.GCM.open(sealed, using: wrappingKey)
-            guard raw.count == keyByteCount else { throw BackupError.wrongPassphraseOrCorrupt }
-            return raw
+            rawKeyData = try AES.GCM.open(sealed, using: wrappingKey)
         } catch {
+            // AES-GCM authentication failure == wrong passphrase or tampered file.
             throw BackupError.wrongPassphraseOrCorrupt
         }
-    }
-
-    // MARK: - Primitives
-
-    private static func pbkdf2(passphrase: String, salt: Data, iterations: Int, keyLength: Int) -> Data? {
-        var derived = [UInt8](repeating: 0, count: keyLength)
-        let status = salt.withUnsafeBytes { saltRaw -> Int32 in
-            derived.withUnsafeMutableBytes { outRaw in
-                CCKeyDerivationPBKDF(
-                    CCPBKDFAlgorithm(kCCPBKDF2),
-                    passphrase, passphrase.utf8.count,
-                    saltRaw.bindMemory(to: UInt8.self).baseAddress, salt.count,
-                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                    UInt32(iterations),
-                    outRaw.bindMemory(to: UInt8.self).baseAddress, keyLength
-                )
-            }
+        guard rawKeyData.count == keyByteCount else {
+            throw BackupError.wrongPassphraseOrCorrupt
         }
-        return status == kCCSuccess ? Data(derived) : nil
+
+        let restoredKey = SymmetricKey(data: rawKeyData)
+        guard KeychainHelper.saveKey(restoredKey, forName: VaultRoot.primary.keychainName) else {
+            throw BackupError.keychainSaveFailed
+        }
+        // A successful import means a recovery path demonstrably exists.
+        setHasExportedKey(true)
+        AppLogger.security.info("Vault key imported and installed")
     }
 
-    private static func randomBytes(_ count: Int) -> Data? {
-        var bytes = [UInt8](repeating: 0, count: count)
-        return SecRandomCopyBytes(kSecRandomDefault, count, &bytes) == errSecSuccess ? Data(bytes) : nil
+    // MARK: - Exported-flag storage
+
+    static func setHasExportedKey(_ value: Bool) {
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: exportedFlagAccount
+        ]
+        SecItemDelete(base as CFDictionary)
+        guard value else { return }
+        var add = base
+        add[kSecValueData as String] = Data([1])
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        SecItemAdd(add as CFDictionary, nil)
     }
 }

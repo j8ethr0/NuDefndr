@@ -13,9 +13,20 @@ Photo Library → SensitiveContentAnalysis (on-device) → Vault (encrypted)
 ## Vault Memory Security
 
 - The vault key is read from the Keychain on unlock and held in memory only while the vault is open.
-- Backgrounding the app locks the vault and releases the key; decrypted image caches (memory and on-disk thumbnails) are cleared at the same time.
-- A separate 60-second grace timer also clears key material and caches if the app is left backgrounded, and latches the vault locked so the next entry requires re-authentication.
+- Backgrounding the app locks the vault and releases the key. Decrypted images held in memory are dropped at the same time.
+- The on-disk thumbnail cache is *not* deleted on lock, and does not need to be: each thumbnail is sealed with ChaCha20-Poly1305 under a key derived from the vault key (HKDF-SHA256), and locking releases that key too. What stays on disk is ciphertext no key on the device can open until the vault is unlocked again — the same bar the vault's own files meet. Keeping it is what stops the second open of the day costing what the first one did.
+- The thumbnail cache *is* deleted outright by the paths that end the vault rather than the session: destroying the vault, wiping the decoy, clearing the vault, and the one-time migration off the older unencrypted cache format.
+- A separate 60-second grace timer also releases key material if the app is left backgrounded, and latches the vault locked so the next entry requires re-authentication.
 - No decrypted photo data is persisted. The key itself is persisted — in the Keychain, device-bound — because a random key that vanished would take the vault with it.
+
+## Network
+
+There is no backend. Two requests leave the device, and this is all of them:
+
+- **Subscription validation (RevenueCat).** Sends an anonymous subscriber identifier, receives entitlement status.
+- **The FAQ page.** Opening the FAQ screen fetches `nudefndr.com/faq.html` (or the `ja`/`th`/`zh` page for the app's language) so the in-app FAQ is the website's, not a second copy. Fetched over an ephemeral `URLSession` with no cookie or credential storage, inlined into one file and rendered with `baseURL: nil` so the web view issues nothing of its own, and cached so the screen works offline. Discloses an IP, a generic user-agent and which language page was asked for.
+
+No analytics, crash reporting, remote config or push. `isNetworkAccessAllowed` on some read paths pulls the user's own photo from the iCloud library they enabled — inbound, nothing uploaded. The Location Cleaner names places from coordinates on-device rather than geocoding, which would send library-derived coordinates outbound.
 
 ## Vault Storage Metrics
 
@@ -26,10 +37,10 @@ Photo Library → SensitiveContentAnalysis (on-device) → Vault (encrypted)
 
 - **Authenticated encryption:** ChaCha20-Poly1305 AEAD. A modified or forged ciphertext fails the Poly1305 tag check and refuses to open.
 - **Random keys:** the vault key comes from the system CSPRNG. It is not derived from a PIN, so PIN strength is not the vault's cryptographic strength.
-- **Memory hygiene:** decrypted image data is purged when the app backgrounds; nothing decrypted is written to disk.
+- **Nothing decrypted on disk:** decrypted image data is purged when the app backgrounds, and every derived artefact that does reach disk — vault files and thumbnails alike — is sealed. No plaintext copy of a vault photo is written anywhere at any point.
 - **Device-bound:** keys use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — unreadable while the device is locked, and never synced or migrated.
 - **Backup posture:** encrypted vault files can appear in an iCloud or device backup; the key cannot. Restored ciphertext is unopenable without a separately exported key backup.
-- **Key derivation:** PBKDF2-HMAC-SHA256 — 310,000 iterations for PIN credentials, 600,000 for the passphrase wrapping an exported key-backup file.
+- **Key derivation:** PBKDF2-HMAC-SHA256 — 310,000 iterations for PIN credentials, 600,000 for the passphrase wrapping an exported key-backup file. Purpose-specific subkeys of the vault key (the thumbnail cache key) use HKDF-SHA256 instead: the input is already a 256-bit random key, so there is nothing to stretch, and separate `info` strings make the subkeys independent — the thumbnail key cannot open a vault file.
 
 Deliberately *not* claimed: forward secrecy. Vault files are sealed with one long-lived key; there is no per-session key exchange and no property that past content stays safe if that key is compromised.
 
