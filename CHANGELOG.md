@@ -4,6 +4,23 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-09-02 – Version 2.6.2
+
+A camera that shoots straight into the vault, and the source for it.
+
+**New in 2.6.2**
+
+- **Vault camera.** A photo taken in NuDefndr goes into the encrypted vault as it is taken. It is never written to the photo library, so unlike vaulting an existing photo there is no original left behind to find and delete — and no thirty days in Recently Deleted. The capture session is published in full at [`Sources/Camera/VaultCameraController.swift`](Sources/Camera/VaultCameraController.swift), because the claim is a negative one and the only useful way to make it is to let you check that `PHPhotoLibrary` does not appear.
+- **The same intake as everything else.** Captured photos go through the one path library imports already use — metadata stripped, then sealed with ChaCha20-Poly1305 and written with complete file protection. That path was two copies of itself before this release; it is now one, so the metadata guarantee cannot hold for imports and quietly lapse for captures.
+- **Reached from the vault.** The camera opens from the vault's own controls, and from the empty-vault screen a new user lands on. It requires an already-open vault and never opens one itself — it is not a second way in past the lock.
+- **A rating prompt, at most once a year** — and never while the app is in any of its reduced-visibility states, because a system alert naming the app defeats the point of them.
+
+**Also fixed**
+
+- **Two controls showed their internal names.** One appeared as `REDACT_AND_SHARE` on the Terminal and Essential themes; the other showed `TRAVEL_MODE_ENABLE_FAILED` to English users while the Japanese, Thai and Chinese translations were correct.
+
+---
+
 ## 2026-08-25 – Version 2.6.1
 
 A vault and location release: encrypted vault thumbnails, a vault that reports its own state, and location data you can clean one place at a time.

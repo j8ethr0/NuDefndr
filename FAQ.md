@@ -104,6 +104,20 @@ Enable it via:
 
 ---
 
+## Vault Camera (Pro) — new in 2.6.2
+
+**Q: What does the vault camera do that the normal camera doesn't?** A: A photo you take in NuDefndr goes into the encrypted vault as it is taken. It is never written to your photo library, so there is no copy sitting outside the vault. Taking a photo normally and then moving it in leaves an original behind, and deleting that original means thirty days in Recently Deleted before it is actually gone.
+
+**Q: Does it carry location or EXIF data?** A: No. Captured photos go through the same metadata-stripping step as anything else entering the vault, before they are encrypted. If stripping fails for any reason the photo is discarded rather than stored — it is never stored with its metadata intact as a fallback.
+
+**Q: What if the vault locks while the camera is open?** A: The capture session stops. Nothing is held unsealed waiting for the vault to reopen.
+
+**Q: Can I verify that it really doesn't touch my photo library?** A: Yes, and that is why the file is published. [`Sources/Camera/VaultCameraController.swift`](Sources/Camera/VaultCameraController.swift) is the whole capture session. The claim is that `PHPhotoLibrary` and any temporary-file write are absent from the path a photo takes, which is something you can check by reading it rather than something you have to take on trust.
+
+**Q: Where do I find it?** A: In the vault, from its controls row or from the empty-vault screen. It requires the vault to already be open — the camera never asks for authentication itself, so it cannot become a second, weaker way past the lock. If the vault closes while the camera is up, the camera closes with it.
+
+---
+
 ## Audit Trail (Pro)
 
 **Q: What is the Audit Trail feature?** A: A local log of security-relevant events, with category filters and a configurable retention window.

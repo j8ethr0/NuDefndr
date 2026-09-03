@@ -4,11 +4,18 @@
 
 Photo Library → SensitiveContentAnalysis (on-device) → Vault (encrypted)
 
+Camera → AVCapturePhotoOutput → memory → Vault (encrypted)
+
+The second path never touches the photo library. A photo captured in the app has
+no plaintext form on disk at any point — it is stripped and sealed from the `Data`
+the capture delivers.
+
 ## Components
 
 1. Photo Analysis: SensitiveContentAnalysis, on-device, no network calls (app requires iOS 18+)
-2. Encryption: ChaCha20-Poly1305 (CryptoKit)
-3. Key Storage: iOS Keychain (device-bound)
+2. Capture: AVFoundation, in-app only — no `PHPhotoLibrary` write, no temporary file
+3. Encryption: ChaCha20-Poly1305 (CryptoKit)
+4. Key Storage: iOS Keychain (device-bound)
 
 ## Vault Memory Security
 
@@ -38,6 +45,8 @@ No analytics, crash reporting, remote config or push. `isNetworkAccessAllowed` o
 - **Authenticated encryption:** ChaCha20-Poly1305 AEAD. A modified or forged ciphertext fails the Poly1305 tag check and refuses to open.
 - **Random keys:** the vault key comes from the system CSPRNG. It is not derived from a PIN, so PIN strength is not the vault's cryptographic strength.
 - **Nothing decrypted on disk:** decrypted image data is purged when the app backgrounds, and every derived artefact that does reach disk — vault files and thumbnails alike — is sealed. No plaintext copy of a vault photo is written anywhere at any point.
+- **One intake path:** photos imported from the library and photos taken with the in-app camera converge on a single function that strips metadata, seals with ChaCha20-Poly1305 and writes with complete file protection. This was two separate implementations before 2.6.2. One path means the metadata guarantee cannot hold on one route and lapse on the other, and it is why `.completeFileProtection` is structural rather than a line each caller has to remember.
+- **Captured photos have no original:** vaulting a photo you already had leaves the library copy for you to delete, and deletion means thirty days in Recently Deleted. A photo taken in the app never had a library copy, so there is nothing to delete and nothing to expire. If the vault locks mid-session the camera stops rather than hold an unsealed photo in memory.
 - **Device-bound:** keys use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — unreadable while the device is locked, and never synced or migrated.
 - **Backup posture:** encrypted vault files can appear in an iCloud or device backup; the key cannot. Restored ciphertext is unopenable without a separately exported key backup.
 - **Key derivation:** PBKDF2-HMAC-SHA256 — 310,000 iterations for PIN credentials, 600,000 for the passphrase wrapping an exported key-backup file. Purpose-specific subkeys of the vault key (the thumbnail cache key) use HKDF-SHA256 instead: the input is already a 256-bit random key, so there is nothing to stretch, and separate `info` strings make the subkeys independent — the thumbnail key cannot open a vault file.
