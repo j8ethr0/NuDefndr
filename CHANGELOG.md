@@ -4,6 +4,40 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-09-11 – Version 2.6.3
+
+Refinements to locking and the vault, and refreshed Terminal and Pixel themes.
+
+**Locking**
+
+- **Instant Lock** closes any open screens, sheets and the camera as it locks the app.
+- **App Lock** closes open screens and sheets when it engages.
+- **Face ID** is offered once each time you return to a locked app; Unlock is always there to try again.
+- **The privacy cover** stays in place while Face ID unlocks the app.
+- **The Instant Lock control** uses the ghost mark.
+
+**Vault**
+
+- **Locking the vault** ends any unlock that is still in progress.
+- **Adding photos** stops cleanly if the vault locks part-way through: nothing from that import is kept, and the photos stay in your library.
+
+**Themes**
+
+- **Terminal and Pixel** are refreshed to match the rest of the app.
+
+**Also**
+
+- Smaller refinements throughout.
+
+**This repository**
+
+- **The vault's intake path is published** at [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift): metadata removal with ImageIO, sealing with ChaCha20-Poly1305, and writing with complete file protection.
+- **Published sources are updated** for 2.6.3.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-09-02 – Version 2.6.2
 
 A camera that shoots straight into the vault, and the source for it.

@@ -1,30 +1,20 @@
-// NuDefndr — nudefndr.com
-// Transparency Repository - Subscription entitlements (v2.6.1)
+// NuDefndr - nudefndr.com
+// Transparency Repository - Subscription entitlements (v2.6.3)
 
 import Foundation
 import RevenueCat
-import StoreKit // Needed for AppStore.sync()
+import StoreKit
 import Combine
-import OSLog // Use modern OSLog for better logging
+import OSLog
 
-@MainActor // Ensure UI updates happen on the main thread
+@MainActor
 class PurchaseManager: ObservableObject {
-    // MARK: - Published Properties (for UI updates)
     @Published var offerings: Offerings? = nil
     @Published var customerInfo: CustomerInfo? = nil
     @Published var isProUser: Bool = false
-    @Published var isLoading: Bool = false // To show activity indicators
-    /// Errors from a *purchase or restore* the user explicitly started. Kept
-    /// separate from `offeringsError` so a network blip while the price list
-    /// loads can't surface as "Purchase Error" over a screen the user has
-    /// only just opened.
+    @Published var isLoading: Bool = false
     @Published var lastError: String? = nil
-    /// Errors from fetching the price list. Drives the paywall's inline retry
-    /// panel, never an alert.
     @Published var offeringsError: String? = nil
-    /// Result of the most recent restore, for UI to report and then clear.
-    /// Restore is the one action that can succeed while changing nothing
-    /// visible, so "nothing happened" has to be sayable.
     @Published var restoreOutcome: RestoreOutcome? = nil
 
     enum RestoreOutcome: Equatable {
@@ -57,86 +47,51 @@ class PurchaseManager: ObservableObject {
         }
     }
 
-    // MARK: - Private Properties
-    private var customerInfoStreamTask: Task<Void, Never>? = nil // Keep stream alive
+    private var customerInfoStreamTask: Task<Void, Never>? = nil
     private var isConfigured: Bool = false
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PurchaseManager")
-    
-    // --- Retry Logic Config ---
-    private let maxFetchRetryAttempts = 3 // Max auto-retries for fetchOfferings
+
+    private let maxFetchRetryAttempts = 3
     private let initialRetryDelaySeconds: Double = 1.0
-    private let maxRetryDelaySeconds: Double = 8.0 // Don't wait forever
-    
-    // MARK: - Initialization
+    private let maxRetryDelaySeconds: Double = 8.0
+
     init() {
-        // Start from the last entitlement RevenueCat actually confirmed, not
-        // from `false`. Resolving the real answer is a network round trip, and
-        // seeding pessimistically meant every paying customer saw a flash of
-        // free-tier UI — locked settings, and their premium theme dropping to
-        // Essential — on every cold launch.
-        //
-        // Optimistic only for display. `lastKnownProEntitlement` is ordinary
-        // UserDefaults and therefore user-writable, so it must never be what
-        // stands between someone and a paid feature.
-        //
-        // What actually makes that safe is structural, and worth stating
-        // precisely: every UI surface that can reach a gated operation —
-        // review/results (`addAssetsToVault`), the vault, the lock screen — is
-        // behind `ContentView.hasInitiallyLoaded`, which is set only *after*
-        // `configureAndFetch()` has written the receipt-backed value. The seed
-        // cannot outlive the loading screen.
-        //
-        // So: if you add a gated action reachable before `hasInitiallyLoaded`
-        // (a notification tap, a deep link, an App Intent), it must check
-        // `isProUser` only after awaiting the real fetch — this seed will lie
-        // to it.
         self.isProUser = ProEntitlementCache.isPro
 
         Task {
             await fetchInitialCustomerInfo()
         }
     }
-    
+
     deinit {
-        // Cancel the stream task when the manager is deallocated
         customerInfoStreamTask?.cancel()
     }
-    
-    // MARK: - Configuration (Call this explicitly, e.g., in app init or .task)
+
     func configureAndFetch() async {
         guard !isConfigured else {
             logger.info("Already configured. Refreshing data...")
-            await fetchOfferingsAsyncWithRetry() // Just refresh offerings if already configured
+            await fetchOfferingsAsyncWithRetry()
             return
         }
-        
+
         logger.info("Configuring RevenueCat SDK and fetching initial data...")
-        // `Purchases.configure(withAPIKey:)` is called once, at app launch, in the
-        // app's entry point rather than here — it is a single line taking the
-        // public client key and no other options. Every other RevenueCat call the
-        // app makes is in this file.
-        
-        isLoading = true // Set loading true for the entire initial sequence
+
+        isLoading = true
         isConfigured = true
         lastError = nil
-        
-        // Fetch initial CustomerInfo first
-        await fetchInitialCustomerInfo() // Await this helper
-        
-        // Start listening for real-time customer info updates
+
+        await fetchInitialCustomerInfo()
+
         listenForCustomerInfoUpdates()
         logger.info("Started listening for CustomerInfo updates.")
-        
-        // Now fetch offerings using the async method with retry
-        await fetchOfferingsAsyncWithRetry() // Await this helper
-        
-        // isLoading state is managed within fetchOfferingsAsyncWithRetry now
-        // It will be set to false when the fetch (including retries) completes or fails definitively.
+
+        await fetchOfferingsAsyncWithRetry()
+
         logger.info("Initial configuration and fetch process started (isLoading will be updated by fetchOfferings).")
-        
-        validateReceiptPath() // Optional diagnostic
+
+        validateReceiptPath()
     }
-    
+
     private func listenForCustomerInfoUpdates() {
         customerInfoStreamTask?.cancel()
         customerInfoStreamTask = Task { [weak self] in
@@ -149,10 +104,7 @@ class PurchaseManager: ObservableObject {
             self?.logger.info("CustomerInfo stream listener finished.")
         }
     }
-    
-    // MARK: - Data Fetching Helpers
-    
-    /// Fetches only the initial CustomerInfo.
+
     private func fetchInitialCustomerInfo() async {
         logger.info("Fetching initial CustomerInfo...")
         do {
@@ -161,39 +113,29 @@ class PurchaseManager: ObservableObject {
         } catch {
             logger.error("Error fetching initial CustomerInfo: \(error.localizedDescription)")
             lastError = "Could not fetch user data. \(error.localizedDescription)"
-            // Consider if you want to stop the whole process if this fails
         }
-        // configureAndFetch will call fetchOfferingsAsyncWithRetry after this returns.
     }
-    
-    /// Fetches Offerings using async/await with retry logic. Manages isLoading state.
+
     func fetchOfferingsAsyncWithRetry() async {
-        // If called manually (e.g., retry button), ensure isLoading reflects this call
         if !isLoading { isLoading = true }
         offeringsError = nil
-        var currentAttempt = 0 // Track attempts for this specific call sequence
-        
+        var currentAttempt = 0
+
         while currentAttempt <= maxFetchRetryAttempts {
             currentAttempt += 1
             logger.info(" Fetching offerings... (Attempt \(currentAttempt)/\(self.maxFetchRetryAttempts + 1))")
-            
+
             do {
                 let fetchedOfferings = try await Purchases.shared.offerings()
-                // SUCCESS
                 logger.info(" Offerings fetched successfully.")
                 if offerings?.all.count != fetchedOfferings.all.count {
                     offerings = fetchedOfferings
                 }
-                // Clear the previous attempt's error. It is only reset at the
-                // top of the function, so a failure followed by a successful
-                // retry left `offeringsError` populated alongside a perfectly
-                // good price list.
                 offeringsError = nil
                 if isLoading {
-                    isLoading = false // Stop loading on success
+                    isLoading = false
                 }
-                return // Exit loop on success
-                
+                return
             } catch let rcError as RevenueCat.ErrorCode {
                 logger.error(" Error fetching offerings (Attempt \(currentAttempt)): RC Code \(rcError) - \(rcError.localizedDescription)")
                 offeringsError = rcError.localizedDescription
@@ -202,53 +144,48 @@ class PurchaseManager: ObservableObject {
                 rcError == .offlineConnectionError ||
                 rcError == .configurationError ||
                 rcError == .unexpectedBackendResponseError
-                
+
                 if isRetryableError && currentAttempt <= self.maxFetchRetryAttempts {
                     let delaySeconds = min(maxRetryDelaySeconds, pow(2.0, Double(currentAttempt - 1)) * initialRetryDelaySeconds)
                     let delayNanoseconds = UInt64(delaySeconds * 1_000_000_000)
                     logger.warning(" Retrying fetch after \(delaySeconds)s delay...")
-                    
+
                     let retrySuccessful = await Task { () -> Bool in
                         try? await Task.sleep(nanoseconds: delayNanoseconds)
-                        guard self.isLoading else { // Check if loading was cancelled elsewhere
+                        guard self.isLoading else {
                             self.logger.info("Skipping retry as loading state changed.")
                             return false
                         }
                         return true
                     }.value
-                    
+
                     guard retrySuccessful else {
                         logger.info("Retry cancelled or loading state changed, exiting fetch loop.")
-                        if self.isLoading { self.isLoading = false } // Ensure loading is false
+                        if self.isLoading { self.isLoading = false }
                         return
                     }
-                    // Continue to the next iteration of the while loop
                 } else {
                     logger.error("Fetch offerings failed definitively after \(currentAttempt) attempts or due to non-retryable error.")
                     if isLoading {
-                        isLoading = false // Stop loading on definitive failure
+                        isLoading = false
                     }
-                    return // Exit loop
+                    return
                 }
             } catch {
                 logger.error(" Fetch offerings failed definitively after \(currentAttempt) attempts with non-RC error: \(error.localizedDescription)")
                 offeringsError = error.localizedDescription
                 if isLoading {
-                    isLoading = false // Stop loading on definitive failure
+                    isLoading = false
                 }
-                return // Exit loop
+                return
             }
         }
-        // If loop finishes without returning (max retries exceeded)
         logger.error("Fetch offerings failed after max (\(self.maxFetchRetryAttempts + 1)) attempts.")
-        if isLoading { // Ensure loading is set false if loop completes due to retries
+        if isLoading {
             isLoading = false
         }
     }
-    
-    // MARK: - Manual Actions (Retry / Reset)
-    
-    /// Called by the manual "Retry Loading" button
+
     func retryFetchingOfferings() {
         logger.info("Manual retry tapped.")
         guard !isLoading else {
@@ -259,13 +196,12 @@ class PurchaseManager: ObservableObject {
             await fetchOfferingsAsyncWithRetry()
         }
     }
-    
-    /// Called by the manual "Reset Store Connection" button
+
     func resetStoreConnectionAndFetch() async {
         logger.info(" Resetting store connection...")
         isLoading = true
         lastError = nil
-        
+
         logger.debug("Attempting AppStore.sync()...")
         do {
             try await AppStore.sync()
@@ -273,15 +209,15 @@ class PurchaseManager: ObservableObject {
         } catch {
             logger.warning(" AppStore.sync() failed: \(error.localizedDescription)")
         }
-        
+
         Purchases.shared.invalidateCustomerInfoCache()
         logger.info("RC CustomerInfo cache invalidated.")
-        
+
         logger.info("Triggering fetchOfferings after reset.")
         await self.fetchOfferingsAsyncWithRetry()
     }
-    
-    func purchase(package: Package) async { /* ... as before ... */
+
+    func purchase(package: Package) async {
         guard !isLoading else { logger.warning("Purchase skipped, already processing."); return }
         isLoading = true
         lastError = nil
@@ -299,7 +235,7 @@ class PurchaseManager: ObservableObject {
         catch { lastError = error.localizedDescription; logger.error(" Purchase failed with generic error: \(error.localizedDescription)") }
         isLoading = false
     }
-    
+
     func restorePurchases() async {
         guard !isLoading else { logger.warning("Restore skipped, already processing."); return }
         isLoading = true
@@ -307,24 +243,14 @@ class PurchaseManager: ObservableObject {
         restoreOutcome = nil
         logger.info(" Restoring purchases...")
         do {
-            // `.fetchCurrent` is implicit in restorePurchases — it posts the
-            // receipt rather than reading the cache, so a stale "not pro"
-            // cache cannot suppress a genuine entitlement.
             let info = try await Purchases.shared.restorePurchases()
             let restored = info.entitlements["pro"]?.isActive == true
             logger.info(" Restore completed. Pro entitlement active: \(restored)")
-            // Set the outcome *before* publishing the new entitlement. The
-            // paywall dismisses itself when `isProUser` flips, and it checks
-            // `restoreOutcome` to decide whether to let the confirmation be
-            // read first — so this has to be visible by then.
             restoreOutcome = restored ? .restored : .noPurchasesFound
             handleCustomerInfoUpdate(info)
             HapticManager.shared.notification(restored ? .success : .warning)
         } catch let rcError as RevenueCat.ErrorCode {
             logger.error(" Restore failed with RC ErrorCode: \(rcError.localizedDescription)")
-            // A cancelled restore is not a failure worth reporting; anything
-            // else is, and the user needs the reason to act on it — in words
-            // they can act on, not "RevenueCat.ErrorCode error 8."
             if rcError == .purchaseCancelledError {
                 restoreOutcome = nil
             } else {
@@ -338,30 +264,44 @@ class PurchaseManager: ObservableObject {
         }
         isLoading = false
     }
-    
-    // MARK: - Subscription Summary (for settings display)
 
     struct SubscriptionSummary {
-        /// Short plan name, e.g. "LIFETIME", "ANNUAL", "MONTHLY", "PRO".
         let planLabel: String
-        /// Renewal / expiry detail, e.g. "Renews 12 Mar 2027", "One-time purchase".
         let detail: String
     }
 
-    /// Human-readable plan + renewal info for the active "pro" entitlement, or nil if not Pro.
     func proSubscriptionSummary() -> SubscriptionSummary? {
-        guard let entitlement = customerInfo?.entitlements["pro"], entitlement.isActive else {
+        guard let info = customerInfo,
+              let entitlement = info.entitlements["pro"], entitlement.isActive else {
             return nil
         }
 
-        // No expiration date => non-subscription (lifetime) purchase.
+        if ownsLifetime(info) {
+            return SubscriptionSummary(planLabel: "LIFETIME",
+                                       detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
+                                                      defaultValue: "One-time purchase"))
+        }
+
         guard let expiration = entitlement.expirationDate else {
-            return SubscriptionSummary(planLabel: "LIFETIME", detail: "One-time purchase")
+            return SubscriptionSummary(planLabel: "LIFETIME",
+                                       detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
+                                                      defaultValue: "One-time purchase"))
         }
 
         let dateString = expiration.formatted(date: .abbreviated, time: .omitted)
-        let detail = entitlement.willRenew ? "Renews \(dateString)" : "Ends \(dateString)"
+        let detail = entitlement.willRenew
+            ? String(format: String(localized: "SETTINGS_PLAN_RENEWS",
+                                    defaultValue: "Renews %@"), dateString)
+            : String(format: String(localized: "SETTINGS_PLAN_ENDS",
+                                    defaultValue: "Ends %@"), dateString)
         return SubscriptionSummary(planLabel: planLabel(forProductID: entitlement.productIdentifier), detail: detail)
+    }
+
+    private func ownsLifetime(_ info: CustomerInfo) -> Bool {
+        if info.nonSubscriptions.contains(where: { $0.productIdentifier.lowercased().contains("lifetime") }) {
+            return true
+        }
+        return info.allPurchasedProductIdentifiers.contains { $0.lowercased().contains("lifetime") }
     }
 
     private func planLabel(forProductID id: String) -> String {
@@ -375,19 +315,13 @@ class PurchaseManager: ObservableObject {
     private func handleCustomerInfoUpdate(_ info: CustomerInfo) {
         customerInfo = info
 
-        // 2. Pro status
         let newIsPro = info.entitlements["pro"]?.isActive == true
         if newIsPro != isProUser {
             isProUser = newIsPro
         }
-        // Verified answer — safe to cache for the next launch. Also what
-        // demotes a lapsed subscriber's premium theme back to Essential.
         let entitlementChanged = ProEntitlementCache.isPro != newIsPro
         ProEntitlementCache.record(newIsPro)
         if entitlementChanged {
-            // The widget renders the effective theme, so it has to be told when
-            // the entitlement behind that theme changes — otherwise the home
-            // screen keeps a premium palette the app has already dropped.
             ProtectionWidgetData.sync()
         }
 
@@ -415,8 +349,6 @@ class PurchaseManager: ObservableObject {
             return String(localized: "PURCHASE_ERROR_NOT_ALLOWED",
                           defaultValue: "Purchases are not allowed on this device. Check Screen Time restrictions in Settings.")
         case .productAlreadyPurchasedError:
-            // Already owned but the entitlement didn't come through — a restore
-            // is the fix, so say so instead of showing a dead end.
             return String(localized: "PURCHASE_ERROR_ALREADY_OWNED",
                           defaultValue: "You already own this. Tap Restore Purchases to unlock it.")
         case .invalidReceiptError, .missingReceiptFileError:
@@ -447,7 +379,6 @@ class PurchaseManager: ObservableObject {
         Task {
             logger.debug("Performing diagnostic receipt validation check...")
             do {
-                // Use fetchCurrent to bypass cache for this diagnostic
                 let info = try await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent)
                 logger.info(" Diagnostic receipt validation successful. Active entitlements: \(info.entitlements.active.count)")
             } catch {
@@ -459,5 +390,4 @@ class PurchaseManager: ObservableObject {
             }
         }
     }
-    
 }

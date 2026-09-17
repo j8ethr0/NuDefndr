@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.6.2-blue)
+![Version](https://img.shields.io/badge/version-2.6.3-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,15 +16,16 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-09-02 – Version 2.6.2**
+**2026-09-11 – Version 2.6.3**
 
-A camera release. Photos taken inside NuDefndr go straight into the encrypted vault and are never written to the photo library — so unlike vaulting a photo you already had, there is no original left behind to delete. The capture session is published in full at [`Sources/Camera/VaultCameraController.swift`](Sources/Camera/VaultCameraController.swift): the claim is that two specific API calls are absent, and reading the file is the only way to check that. Captured photos also share the one metadata-stripping and sealing path that library imports use, rather than a second copy of it. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Refinements to locking and the vault, and refreshed Terminal and Pixel themes. The vault's intake path — metadata removal, sealing and writing — is now published at [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift). See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
 ## What's Included
 
 - Vault Encryption (ChaCha20-Poly1305)
+- Vault Intake: Metadata Stripping and Sealing (ImageIO, ChaCha20-Poly1305)
 - Vault Camera Capture Session (AVFoundation)
 - Keychain Integration (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
 - SensitiveContentAnalysis Framework Wrapper
@@ -61,12 +62,13 @@ The published sources back the claims above directly — read the file, not just
 | [`Sources/Purchases/ProEntitlementCache.swift`](Sources/Purchases/ProEntitlementCache.swift) | The locally cached Pro flag the UI reads, so a launch does not gate features on a network round-trip |
 | [`Sources/FAQ/FAQDocumentStore.swift`](Sources/FAQ/FAQDocumentStore.swift) | The FAQ fetch — the one host, an ephemeral session with no cookie, credential or URL cache, and a generic user-agent |
 | [`Sources/FAQ/FAQWebPage.swift`](Sources/FAQ/FAQWebPage.swift) | The FAQ renderer — non-persistent data store, `baseURL: nil`, every navigation but the initial load refused |
+| [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift) | The path every photo takes into the vault, imported or captured — EXIF, GPS, TIFF, IPTC and Apple maker metadata removed with ImageIO, then sealed with ChaCha20-Poly1305 and written with complete file protection |
 
-Each of these is the shipping file, under its real name, with debug-only branches
-resolved to the release build. Vault encryption itself has no file of its own to
-publish: `ChaChaPoly.seal` and `ChaChaPoly.open` are called inline where vault
-items and thumbnails are written and read. What is published here is everything
-that decides *which key* those calls use.
+Each of these is shipping code, with debug-only branches resolved to the release
+build. The seal that writes a vault photo is published in `VaultIntake.swift`;
+`ChaChaPoly.open`, and the seal for thumbnails, are called inline where those are
+read and written. Together with the key storage and derivation above, what is
+published here covers *which key* those calls use and how a vault photo reaches disk.
 
 ## Requirements
 
