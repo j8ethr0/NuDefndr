@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Scan result model (v2.6.3)
+// Transparency Repository - Scan result model (v2.6.5)
 
 import Foundation
 import Photos

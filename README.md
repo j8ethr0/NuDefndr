@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.6.3-blue)
+![Version](https://img.shields.io/badge/version-2.6.5-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-09-11 – Version 2.6.3**
+**2026-10-08 – Version 2.6.5**
 
-Refinements to locking and the vault, and refreshed Terminal and Pixel themes. The vault's intake path — metadata removal, sealing and writing — is now published at [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift). See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Every screen in Japanese, Thai and Simplified Chinese, a theme-aware app switcher cover, and a privacy blur that holds at every size, including on iPad. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 

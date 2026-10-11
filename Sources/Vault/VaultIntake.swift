@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.3)
+// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.5)
 
 import Foundation
 import CryptoKit

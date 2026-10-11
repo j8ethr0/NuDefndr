@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - On-device sensitive content analysis (v2.6.3)
+// Transparency Repository - On-device sensitive content analysis (v2.6.5)
 
 import Foundation
 import SensitiveContentAnalysis

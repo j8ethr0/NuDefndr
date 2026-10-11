@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault camera capture session (v2.6.3)
+// Transparency Repository - Vault camera capture session (v2.6.5)
 
 import AVFoundation
 import UIKit
@@ -205,7 +205,7 @@ private final class CameraEngine: @unchecked Sendable {
 
     func capture(flashMode: AVCaptureDevice.FlashMode) async -> Data? {
         await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
-            queue.async {
+            queue.async { [self] in
                 guard self.session.isRunning, self.canTakePhoto else {
                     AppLogger.vault.error("Capture refused: session not ready")
                     continuation.resume(returning: nil)

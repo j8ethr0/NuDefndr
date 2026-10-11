@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key backup & recovery (v2.6.3)
+// Transparency Repository - Vault key backup & recovery (v2.6.5)
 
 import Foundation
 import Security
@@ -14,7 +14,6 @@ enum VaultKeyBackup {
     private static let saltByteCount = 16
     private static let keyByteCount = 32
     private static let exportedFlagAccount = "com.dro1d.PicDefndr.hasExportedVaultKey"
-    private static let exportedFlagAccount = "com.dro1d.PicDefndr.hasExportedVaultKey"
 
     struct BackupFile: Codable {
         let format: String
@@ -28,8 +27,6 @@ enum VaultKeyBackup {
 
     enum BackupError: Error, LocalizedError {
         case noVaultKey
-    enum BackupError: Error, LocalizedError {
-        case noVaultKey
         case cryptoFailed
         case invalidFile
         case wrongPassphraseOrCorrupt
@@ -38,15 +35,15 @@ enum VaultKeyBackup {
         var errorDescription: String? {
             switch self {
             case .noVaultKey:
-                return "This vault has no key to export yet. Add something to your vault first, then try again."
+                return String(localized: "KEYBACKUP_ERR_NO_KEY", defaultValue: "This vault has no key to export yet. Add something to your vault first, then try again.", comment: "Key export error when the vault has no key yet")
             case .cryptoFailed:
-                return "Something went wrong preparing the key. Please try again."
+                return String(localized: "KEYBACKUP_ERR_CRYPTO", defaultValue: "Something went wrong preparing the key. Please try again.", comment: "Key export/restore error when encryption fails")
             case .invalidFile:
-                return "That file isn't a NUDEFNDR vault key."
+                return String(localized: "KEYBACKUP_ERR_INVALID_FILE", defaultValue: "That file isn't a NUDEFNDR vault key.", comment: "Key restore error when the chosen file is not a vault key file")
             case .wrongPassphraseOrCorrupt:
-                return "Wrong passphrase, or the key file has been altered."
+                return String(localized: "KEYBACKUP_ERR_WRONG_PASSPHRASE", defaultValue: "Wrong passphrase, or the key file has been altered.", comment: "Key restore error when the passphrase is wrong or the file is corrupt")
             case .keychainSaveFailed:
-                return "Couldn't save the restored key to this device."
+                return String(localized: "KEYBACKUP_ERR_KEYCHAIN", defaultValue: "Couldn't save the restored key to this device.", comment: "Key restore error when saving the key to the Keychain fails")
             }
         }
     }
@@ -127,7 +124,6 @@ enum VaultKeyBackup {
             let sealed = try AES.GCM.SealedBox(combined: combined)
             rawKeyData = try AES.GCM.open(sealed, using: wrappingKey)
         } catch {
-            // AES-GCM authentication failure == wrong passphrase or tampered file.
             throw BackupError.wrongPassphraseOrCorrupt
         }
         guard rawKeyData.count == keyByteCount else {

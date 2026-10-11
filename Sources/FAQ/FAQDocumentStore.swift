@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - In-app FAQ fetch and cache (v2.6.3)
+// Transparency Repository - In-app FAQ fetch and cache (v2.6.5)
 
 import Foundation
 import SwiftUI

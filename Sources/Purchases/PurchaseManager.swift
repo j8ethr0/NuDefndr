@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Subscription entitlements (v2.6.3)
+// Transparency Repository - Subscription entitlements (v2.6.5)
 
 import Foundation
 import RevenueCat
@@ -12,6 +12,7 @@ class PurchaseManager: ObservableObject {
     @Published var offerings: Offerings? = nil
     @Published var customerInfo: CustomerInfo? = nil
     @Published var isProUser: Bool = false
+    @Published var isLifetimeOwner: Bool = false
     @Published var isLoading: Bool = false
     @Published var lastError: String? = nil
     @Published var offeringsError: String? = nil
@@ -57,6 +58,7 @@ class PurchaseManager: ObservableObject {
 
     init() {
         self.isProUser = ProEntitlementCache.isPro
+        self.isLifetimeOwner = UserDefaults.standard.bool(forKey: AppKeys.lastKnownLifetimeEntitlement)
 
         Task {
             await fetchInitialCustomerInfo()
@@ -112,7 +114,7 @@ class PurchaseManager: ObservableObject {
             handleCustomerInfoUpdate(info)
         } catch {
             logger.error("Error fetching initial CustomerInfo: \(error.localizedDescription)")
-            lastError = "Could not fetch user data. \(error.localizedDescription)"
+            lastError = String(format: String(localized: "PURCHASE_ERROR_FETCH_USER_DATA", defaultValue: "Could not fetch user data. %@", comment: "Shown when the initial customer info fetch fails. %@ = system error description"), error.localizedDescription)
         }
     }
 
@@ -277,13 +279,13 @@ class PurchaseManager: ObservableObject {
         }
 
         if ownsLifetime(info) {
-            return SubscriptionSummary(planLabel: "LIFETIME",
+            return SubscriptionSummary(planLabel: String(localized: "PLAN_NAME_LIFETIME"),
                                        detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
                                                       defaultValue: "One-time purchase"))
         }
 
         guard let expiration = entitlement.expirationDate else {
-            return SubscriptionSummary(planLabel: "LIFETIME",
+            return SubscriptionSummary(planLabel: String(localized: "PLAN_NAME_LIFETIME"),
                                        detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
                                                       defaultValue: "One-time purchase"))
         }
@@ -306,9 +308,9 @@ class PurchaseManager: ObservableObject {
 
     private func planLabel(forProductID id: String) -> String {
         let lower = id.lowercased()
-        if lower.contains("annual") || lower.contains("year") { return "ANNUAL" }
-        if lower.contains("month") { return "MONTHLY" }
-        if lower.contains("week") { return "WEEKLY" }
+        if lower.contains("annual") || lower.contains("year") { return String(localized: "PLAN_NAME_ANNUAL", defaultValue: "ANNUAL") }
+        if lower.contains("month") { return String(localized: "PLAN_NAME_MONTHLY", defaultValue: "MONTHLY") }
+        if lower.contains("week") { return String(localized: "PLAN_NAME_WEEKLY", defaultValue: "WEEKLY", comment: "Subscription plan name shown in Settings") }
         return "PRO"
     }
 
@@ -325,7 +327,11 @@ class PurchaseManager: ObservableObject {
             ProtectionWidgetData.sync()
         }
 
-        logger.info(" CustomerInfo processed. isProUser: \(newIsPro)")
+        let newIsLifetime = ownsLifetime(info)
+        if newIsLifetime != isLifetimeOwner { isLifetimeOwner = newIsLifetime }
+        UserDefaults.standard.set(newIsLifetime, forKey: AppKeys.lastKnownLifetimeEntitlement)
+
+        logger.info(" CustomerInfo processed. isProUser: \(newIsPro), isLifetimeOwner: \(newIsLifetime)")
         if !info.entitlements.active.isEmpty {
             logger.debug("Active entitlements: \(info.entitlements.active.keys.joined(separator: ", "))")
         }

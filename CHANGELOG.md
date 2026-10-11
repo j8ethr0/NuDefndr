@@ -4,6 +4,62 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-10-08 – Version 2.6.5
+
+Every screen in Japanese, Thai and Simplified Chinese, a theme-aware app switcher cover, and a privacy blur that holds at every size.
+
+**Languages**
+
+- **Every screen is available** in Japanese, Thai and Simplified Chinese, including the system permission prompts.
+
+**Privacy**
+
+- **The app switcher cover** takes on your theme, with each theme showing its own ghost.
+- **The privacy blur scales with each thumbnail**, so results and vault grids are fully frosted at every size, including on iPad.
+
+**Also**
+
+- Refinements across the MNML theme and the review flow, plus small fixes throughout.
+
+**This repository**
+
+- **Published sources are updated** for 2.6.5: vault key backup messages and subscription plan names are localised in [`Sources/Vault/VaultKeyBackup.swift`](Sources/Vault/VaultKeyBackup.swift) and [`Sources/Purchases/PurchaseManager.swift`](Sources/Purchases/PurchaseManager.swift).
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
+## 2026-09-20 – Version 2.6.4
+
+Clearer scan results, wider scan windows, and a Lifetime tier of its own.
+
+**Scanning**
+
+- **Scan results report their outcome:** flagged, clear, already checked, or nothing in range.
+- **Last 90 Days and other windows** include photos edited in that period.
+- **Manual scans** hold the screen awake until they finish.
+- **Photos iCloud could not deliver** are listed on the home screen.
+
+**Lifetime**
+
+- **Lifetime owners** have their own section, an exclusive app icon, and a copy of nu11VLT.
+
+**Audit Trail**
+
+- **The Audit Trail records** vault key export and restore, photos restored from the vault, paused scans, and clearing the trail itself.
+
+**Also**
+
+- Smaller refinements throughout.
+
+**This repository**
+
+- **Published sources are updated** for 2.6.4, including the Lifetime entitlement in [`Sources/Purchases/PurchaseManager.swift`](Sources/Purchases/PurchaseManager.swift).
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-09-11 – Version 2.6.3
 
 Refinements to locking and the vault, and refreshed Terminal and Pixel themes.
