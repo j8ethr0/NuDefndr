@@ -4,6 +4,31 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-10-18 – Version 2.6.6
+
+A private globe of your photos with every place named by town, and stricter rules for the Ghost and Distress PINs.
+
+**Location data**
+
+- **A dot-matrix globe** shows every place your geotagged photos and videos were taken. Tap a place to open its photos.
+- **Places are named by the nearest town** from a table bundled in the app (Natural Earth, public domain). No coordinate is sent anywhere to look up a name.
+- **Videos are covered** as well as photos, and places can be browsed by place, trip or month.
+
+**Look**
+
+- A dot-matrix globe on Home, showing your geotagged places beside the count.
+- Dot-drawn feature icons and a globe on the Pro screen.
+
+**Vault**
+
+- **A Ghost or Distress PIN can no longer match the Vault PIN.** Setup refuses it, and under Travel Mode the Vault PIN is always checked first.
+- **Settings shows no Ghost or Distress PIN** while the Ghost vault is the one that was opened.
+- **The key backup passphrase is never offered to the iOS Passwords app**, so it is not saved on the same phone as the key it protects.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-10-08 – Version 2.6.5
 
 Every screen in Japanese, Thai and Simplified Chinese, a theme-aware app switcher cover, and a privacy blur that holds at every size.

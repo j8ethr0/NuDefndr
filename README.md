@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.6.5-blue)
+![Version](https://img.shields.io/badge/version-2.6.6-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-10-08 – Version 2.6.5**
+**2026-10-18 – Version 2.6.6**
 
-Every screen in Japanese, Thai and Simplified Chinese, a theme-aware app switcher cover, and a privacy blur that holds at every size, including on iPad. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+A private dot-matrix globe of your photos, with every place named by town. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
