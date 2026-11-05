@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.6.6-blue)
+![Version](https://img.shields.io/badge/version-2.6.7-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-10-18 – Version 2.6.6**
+**2026-10-30 – Version 2.6.7**
 
-A private dot-matrix globe of your photos, with every place named by town. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+Clean & Share sends a copy of a photo without its location, camera or time details, and NuDefndr is ready for iPhone Duo. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
@@ -62,7 +62,8 @@ The published sources back the claims above directly — read the file, not just
 | [`Sources/Purchases/ProEntitlementCache.swift`](Sources/Purchases/ProEntitlementCache.swift) | The locally cached Pro flag the UI reads, so a launch does not gate features on a network round-trip |
 | [`Sources/FAQ/FAQDocumentStore.swift`](Sources/FAQ/FAQDocumentStore.swift) | The FAQ fetch — the one host, an ephemeral session with no cookie, credential or URL cache, and a generic user-agent |
 | [`Sources/FAQ/FAQWebPage.swift`](Sources/FAQ/FAQWebPage.swift) | The FAQ renderer — non-persistent data store, `baseURL: nil`, every navigation but the initial load refused |
-| [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift) | The path every photo takes into the vault, imported or captured — EXIF, GPS, TIFF, IPTC and Apple maker metadata removed with ImageIO, then sealed with ChaCha20-Poly1305 and written with complete file protection |
+| [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift) | The path every photo takes into the vault, imported or captured — metadata removed by `MetadataStrip`, then sealed with ChaCha20-Poly1305 and written with complete file protection |
+| [`Sources/Privacy/MetadataStrip.swift`](Sources/Privacy/MetadataStrip.swift) | The one metadata strip, shared by the vault and Clean & Share — GPS, EXIF, TIFF, IPTC, XMP and every camera maker's notes removed with ImageIO, orientation kept, and a clean copy checked against an allow-list before it leaves the phone |
 
 Each of these is shipping code, with debug-only branches resolved to the release
 build. The seal that writes a vault photo is published in `VaultIntake.swift`;

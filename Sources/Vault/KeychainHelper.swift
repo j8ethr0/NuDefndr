@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key storage (v2.6.5)
+// Transparency Repository - Vault key storage (v2.6.7)
 
 import Foundation
 import Security

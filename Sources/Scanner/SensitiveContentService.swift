@@ -1,10 +1,11 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - On-device sensitive content analysis (v2.6.5)
+// Transparency Repository - On-device sensitive content analysis (v2.6.7)
 
 import Foundation
 import SensitiveContentAnalysis
 import UIKit
 import CoreGraphics
+import ImageIO
 import os
 
 class SensitiveContentService {
@@ -46,14 +47,36 @@ class SensitiveContentService {
     }
 
     func analyzeImage(imageData: Data, assetIdentifier: String) async -> Bool {
+        await sensitivity(ofImageData: imageData, assetIdentifier: assetIdentifier) ?? false
+    }
+
+    func sensitivity(ofImageData imageData: Data, assetIdentifier: String) async -> Bool? {
         guard let uiImage = UIImage(data: imageData) else {
-            return false
+            return nil
         }
 
         guard let cgImage = uiImage.cgImage else {
-            return false
+            return nil
         }
 
+        return await sensitivity(of: cgImage)
+    }
+
+    func sensitivity(ofImageAt url: URL) async -> Bool? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: 1536
+        ]
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+        return await sensitivity(of: cgImage)
+    }
+
+    private func sensitivity(of cgImage: CGImage) async -> Bool? {
         do {
             let result = try await analyzer.analyzeImage(cgImage)
             if result.isSensitive {
@@ -70,7 +93,7 @@ class SensitiveContentService {
 
             return false
         } catch {
-            return false
+            return nil
         }
     }
 

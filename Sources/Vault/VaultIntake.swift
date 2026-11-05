@@ -1,9 +1,8 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.5)
+// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.7)
 
 import Foundation
 import CryptoKit
-import ImageIO
 import UIKit
 
 struct VaultItem: Identifiable, Codable, Equatable, Hashable {
@@ -47,30 +46,6 @@ extension VaultManager {
 
 extension MetadataPrivacyService {
     static func strippedImageData(from data: Data) -> Data? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let type = CGImageSourceGetType(source) else { return nil }
-
-        let count = CGImageSourceGetCount(source)
-        let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(output, type, count, nil) else { return nil }
-
-        for index in 0..<count {
-            var removal: [CFString: Any] = [
-                kCGImagePropertyGPSDictionary: kCFNull as Any,
-                kCGImagePropertyExifDictionary: kCFNull as Any,
-                kCGImagePropertyExifAuxDictionary: kCFNull as Any,
-                kCGImagePropertyTIFFDictionary: kCFNull as Any,
-                kCGImagePropertyIPTCDictionary: kCFNull as Any,
-                kCGImagePropertyMakerAppleDictionary: kCFNull as Any
-            ]
-            if let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
-               let orientation = properties[kCGImagePropertyOrientation] {
-                removal[kCGImagePropertyOrientation] = orientation
-            }
-            CGImageDestinationAddImageFromSource(destination, source, index, removal as CFDictionary)
-        }
-
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return output as Data
+        MetadataStrip.strippedImageData(from: data)
     }
 }

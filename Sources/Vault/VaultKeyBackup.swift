@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key backup & recovery (v2.6.5)
+// Transparency Repository - Vault key backup & recovery (v2.6.7)
 
 import Foundation
 import Security
@@ -31,6 +31,8 @@ enum VaultKeyBackup {
         case invalidFile
         case wrongPassphraseOrCorrupt
         case keychainSaveFailed
+        case keyFromAnotherVault
+        case keyNotImportedYet
 
         var errorDescription: String? {
             switch self {
@@ -44,6 +46,10 @@ enum VaultKeyBackup {
                 return String(localized: "KEYBACKUP_ERR_WRONG_PASSPHRASE", defaultValue: "Wrong passphrase, or the key file has been altered.", comment: "Key restore error when the passphrase is wrong or the file is corrupt")
             case .keychainSaveFailed:
                 return String(localized: "KEYBACKUP_ERR_KEYCHAIN", defaultValue: "Couldn't save the restored key to this device.", comment: "Key restore error when saving the key to the Keychain fails")
+            case .keyFromAnotherVault:
+                return String(localized: "KEYBACKUP_ERR_OTHER_VAULT", defaultValue: "This key belongs to a different vault. Try another key file.", comment: "Key restore error when the key file opens but does not match the photos in this vault")
+            case .keyNotImportedYet:
+                return String(localized: "KEYBACKUP_ERR_IMPORT_FIRST", defaultValue: "Import your vault key first, then you can back it up again.", comment: "Key export error on a restored phone whose vault key has not been imported yet")
             }
         }
     }
@@ -61,7 +67,7 @@ enum VaultKeyBackup {
 
     static func exportPrimaryKey(passphrase: String) throws -> URL {
         guard let key = KeychainHelper.loadKey(forName: VaultRoot.primary.keychainName) else {
-            throw BackupError.noVaultKey
+            throw VaultManager.primaryVaultHasStoredItems() ? BackupError.keyNotImportedYet : BackupError.noVaultKey
         }
         let rawKeyData = key.withUnsafeBytes { Data($0) }
 
@@ -131,6 +137,9 @@ enum VaultKeyBackup {
         }
 
         let restoredKey = SymmetricKey(data: rawKeyData)
+        guard VaultManager.keyOpensPrimaryVault(restoredKey) else {
+            throw BackupError.keyFromAnotherVault
+        }
         guard KeychainHelper.saveKey(restoredKey, forName: VaultRoot.primary.keychainName) else {
             throw BackupError.keychainSaveFailed
         }

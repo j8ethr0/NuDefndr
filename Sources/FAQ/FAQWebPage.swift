@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - In-app FAQ renderer (v2.6.5)
+// Transparency Repository - In-app FAQ renderer (v2.6.7)
 
 import SwiftUI
 import WebKit

@@ -4,6 +4,42 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-10-30 – Version 2.6.7
+
+Clean & Share sends a copy of a photo without its location, camera or time details, and NuDefndr is ready for iPhone Duo.
+
+**Clean & Share**
+
+- **Share a photo through NuDefndr** and it shows what the photo gives away: whether it has a location, the camera and the time it was taken. Read from the file on the phone; no place name is looked up.
+- **SHARE CLEAN COPY** removes GPS, EXIF, TIFF, IPTC, XMP and camera maker notes, keeps the picture and its orientation, and hands the copy to the iOS share sheet. The original in Photos is not changed.
+- **Every clean copy is checked** against an allow-list of harmless layout fields before it is offered. If the check fails, nothing is shared.
+- **Nothing from the share sheet is saved to Photos.** Temporary copies are kept with complete file protection and removed afterwards.
+- **The audit trail records** the number of photos shared and how many carried a location. Nothing else.
+
+**Home and Results**
+
+- **Since your last visit**: Home shows how many photos were checked since the app was last opened, and the week at a glance.
+- **Copies**: Results groups near-identical photos so extras can be cleared. Fingerprints are worked out from small on-device thumbnails, held in memory only and never written anywhere.
+- **Old Screenshots** (Pro): a sweep for screenshots past a chosen age.
+
+**iPhone Duo**
+
+- **Fills both displays**, closed on the outer display or open on the inner one, built with the iOS 27.1 SDK.
+- **Photo grids size themselves from the space they are given**, not from the device's screen.
+
+**Vault**
+
+- **Restoring a key file checks it against the photos in your vault**, and refuses a key that belongs to a different vault.
+
+**This repository**
+
+- New `Sources/Privacy/MetadataStrip.swift`: the metadata strip the vault and Clean & Share both use.
+- `Sources/Scanner/SensitiveContentService.swift`, `Sources/Vault/VaultIntake.swift` and `Sources/Vault/VaultKeyBackup.swift` updated to the shipping code. All source headers read v2.6.7.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-10-18 – Version 2.6.6
 
 A private globe of your photos with every place named by town, and stricter rules for the Ghost and Distress PINs.

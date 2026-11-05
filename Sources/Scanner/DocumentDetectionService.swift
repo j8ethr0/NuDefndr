@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Documents & IDs detection (v2.6.5)
+// Transparency Repository - Documents & IDs detection (v2.6.7)
 
 import Foundation
 import Vision
