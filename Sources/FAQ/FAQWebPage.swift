@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - In-app FAQ renderer (v2.6.7)
+// Transparency Repository - In-app FAQ renderer (v2.6.8)
 
 import SwiftUI
 import WebKit
@@ -43,8 +43,8 @@ struct FAQWebPage: UIViewRepresentable {
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor navigationAction: WKNavigationAction,
-                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
+                     decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(navigationAction.request.url?.scheme == "about" ? .allow : .cancel)
         }
     }
 }

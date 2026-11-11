@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key storage (v2.6.7)
+// Transparency Repository - Vault key storage (v2.6.8)
 
 import Foundation
 import Security
@@ -8,14 +8,17 @@ import CryptoKit
 struct KeychainHelper {
     static func saveKey(_ key: SymmetricKey, forName name: String) -> Bool {
         let keyData = key.withUnsafeBytes { Data($0) }
-        let query: [String: Any] = [
+        let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: name,
-            kSecValueData as String: keyData,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            kSecAttrAccount as String: name
         ]
-        SecItemDelete(query as CFDictionary)
-        let status = SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemUpdate(base as CFDictionary, [kSecValueData as String: keyData] as CFDictionary)
+        if status == errSecItemNotFound {
+            var add = base
+            add[kSecValueData as String] = keyData
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            status = SecItemAdd(add as CFDictionary, nil)
+        }
         let success = status == errSecSuccess
 
         if success {

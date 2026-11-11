@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.7)
+// Transparency Repository - Vault intake: metadata strip, seal and write (v2.6.8)
 
 import Foundation
 import CryptoKit
@@ -25,13 +25,12 @@ extension VaultManager {
                 ?? UIImage(data: imageData)?.jpegData(compressionQuality: 0.95) else {
             throw VaultIntakeError.metadataStripFailed
         }
-        let sealedBox = try ChaChaPoly.seal(cleanData, using: key)
-
         let newItemID = UUID()
+        let sealedBox = try Self.sealItem(cleanData, id: newItemID, using: key)
         let encryptedFileName = "\(newItemID.uuidString).encrypteddata"
         let fileURL = vaultDir.appendingPathComponent(encryptedFileName)
         do {
-            try sealedBox.combined.write(to: fileURL, options: [.completeFileProtection])
+            try sealedBox.write(to: fileURL, options: [.completeFileProtection])
         } catch {
             try? FileManager.default.removeItem(at: fileURL)
             throw error

@@ -4,20 +4,11 @@
 
 **Q: Does NuDefndr send my photos or scan results anywhere?** A: No. All image analysis, classification, encryption and metadata stripping happen entirely on-device. Your photos, scan results, audit logs and vault contents are never transmitted.
 
-**Q: So the app makes no network requests at all?** A: Two, and neither carries anything about your photos. Subscription status is validated through RevenueCat, the App Store billing layer, which sees an anonymous subscriber identifier and whether you hold a Pro entitlement. And the FAQ screen loads this FAQ from nudefndr.com, so the in-app version cannot drift out of date — the page, its stylesheet, its script and its font, all from the same host and none from anywhere else. Those requests tell our web host an IP address and which language page was asked for, the same as any browser, and only when you open that screen. There is no analytics SDK, no crash reporter and no tracking. Run NuDefndr behind a proxy and those two are all you will see.
+**Q: So the app makes no network requests at all?** A: None of its own. Purchases and Pro entitlement checks go through Apple's StoreKit on your device, so the app connects to Apple for them, with no third-party SDK and no billing server of ours. If you scan iCloud Photos, iOS downloads those photos from your own iCloud account so they can be checked on the phone. The FAQ is built into the app, so opening it sends nothing. There is no analytics SDK, no crash reporter and no tracking. Run NuDefndr behind a proxy and Apple is all you will see.
 
-**Q: You use RevenueCat. How do I know you are not using it for analytics?** A: Read the calls. [`Sources/Purchases/PurchaseManager.swift`](Sources/Purchases/PurchaseManager.swift) is every RevenueCat call the app makes, bar one: the SDK is initialised at app launch with a single `Purchases.configure(withAPIKey:)` taking the public client key and no other options. What is *absent* is the part that matters, because RevenueCat's data collection is opt-in through APIs the app has to call:
+**Q: How are purchases handled, and how do I know nothing else is involved?** A: Read the calls. [`Sources/Purchases/PurchaseManager.swift`](Sources/Purchases/PurchaseManager.swift) is the whole purchase path, written against Apple's StoreKit 2: `Product.products(for:)` loads the three products, `Product.purchase` buys one, `Transaction.currentEntitlements` and `Transaction.updates` decide whether Pro is active, and `AppStore.sync()` restores. Each transaction is verified on the device before it counts. The app contains no third-party SDK, and there is no account system, so there is no identity to attach a purchase to.
 
-| API | What it would do | Used |
-|---|---|---|
-| `setAttributes`, `setEmail`, `setDisplayName`, `setPhoneNumber` | attach subscriber attributes | no |
-| `attribution`, Apple Search Ads / AdServices collection | ad attribution | no |
-| `logIn` / `logOut` / a custom app user ID | tie purchases to an identity | no |
-| `RevenueCatUI` | their paywall components, which emit their own events | no |
-
-There is no account system, so there is no identity to attach anything to — purchases run against RevenueCat's own anonymous identifier (`$RCAnonymousID:…`), which is visible to anyone watching the traffic.
-
-**The honest limit:** this proves what the app *sends*. It cannot prove what is switched on inside a RevenueCat dashboard, because that is server-side configuration and no client code can attest to it. No integrations are enabled — nothing is forwarded from RevenueCat to any analytics or advertising service — but you have our word for that part, not our source. If that is not good enough for your threat model, the check that does not require trusting us is a proxy: put NuDefndr behind mitmproxy or Charles and watch. You will see subscription calls and, when you open the FAQ, one request for the FAQ page.
+**The honest limit:** this proves what the app *sends*, and what Apple does with a purchase on its own side is Apple's. The check that does not require trusting us is a proxy: put NuDefndr behind mitmproxy or Charles and watch. You will see App Store traffic and nothing else.
 
 **Q: What encryption standard does NuDefndr use?** A: ChaCha20-Poly1305 (256-bit AEAD authenticated encryption).
 
@@ -27,9 +18,9 @@ There is no account system, so there is no identity to attach anything to — pu
 
 **Q: What happens to decrypted vault data in memory?** A: Backgrounding the app locks the vault, releases the key from memory, and drops every decrypted image held in memory. A separate 60-second timer repeats that cleanup if the app is left backgrounded. No decrypted photo data is written to disk at any point.
 
-**Q: Does the app keep thumbnails of my vault photos on disk?** A: Yes, and they are encrypted. Each one is sealed with ChaCha20-Poly1305 under a key derived from your vault key, so a locked vault cannot read its own thumbnails any more than anyone else can. They deliberately survive a lock — regenerating them all on every app switch is slow and buys nothing once they are sealed — and they are deleted outright when the vault itself is destroyed or cleared. They are excluded from iCloud backups. Older versions of the app cached these thumbnails unencrypted; updating deletes any that were left behind, once, on first launch.
+**Q: Does the app keep thumbnails of my vault photos on disk?** A: Yes, and they are encrypted. Each one is sealed with ChaCha20-Poly1305 under a key derived from your vault key, so a locked vault cannot read its own thumbnails any more than anyone else can. They deliberately survive a lock — regenerating them all on every app switch is slow and buys nothing once they are sealed — and they are deleted outright when the vault itself is destroyed or cleared. They are excluded from iCloud backups.
 
-**Q: What does the encryption actually protect against?** A: Someone with access to the app's files — via a backup, a forensic image, or the filesystem — cannot read vault contents, because the key is device-only and never appears in a backup. The Poly1305 authentication tag means altered ciphertext fails to open rather than decrypting to something wrong. It does not protect against someone who has your unlocked phone and your credentials; that is what App Lock, the Vault PIN and Travel Mode are for.
+**Q: What does the encryption actually protect against?** A: Someone with access to the app's files — via a backup, a forensic image, or the filesystem — cannot read vault contents, because the key is device-only and never appears in a backup. The Poly1305 authentication tag means altered ciphertext fails to open rather than decrypting to something wrong. Each vault photo is also sealed with its item identifier as authenticated data, so a file opens only for the record it was sealed for. It does not protect against someone who has your unlocked phone and your credentials; that is what App Lock, the Vault PIN and Travel Mode are for.
 
 **Q: Is NuDefndr open source?** A: Partially. Core security architectures, cryptographic wrappers, and transparency-critical components are publicly visible in this repository.
 

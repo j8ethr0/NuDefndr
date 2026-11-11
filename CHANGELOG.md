@@ -4,6 +4,46 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-11-04 – Version 2.6.8
+
+Every vault photo is sealed to its own record, Pro runs on Apple's StoreKit with no third-party SDK, and the language chosen in Settings applies to every string.
+
+**Vault**
+
+- **Each encrypted photo carries its item identifier as authenticated data**, so a file is accepted only for the record it was sealed for. Vaults from earlier versions are upgraded on first unlock.
+
+**Security**
+
+- **One grace rule for App Lock.** Leave NuDefndr while it is unlocked and come back within a minute, measured on a clock the date setting cannot move, and no Face ID is asked for. After that the lock screen shows, and a cancelled or failed Face ID stays on it.
+- **Instant Lock ends any Face ID already in progress**, so a prompt on screen cannot unlock the app after Instant Lock has locked it.
+- **PIN attempts are throttled with an escalating delay** measured on a clock the date setting cannot move, and kept in the Keychain so reinstalling does not reset it. A record that cannot be read is treated as a lockout.
+- **PIN credentials are salted PBKDF2-SHA256 at 310,000 iterations**, stored in the Keychain for this device only. Credentials from earlier versions are upgraded at launch.
+- Credentials and keys are written in place in the Keychain, so a failed write leaves the previous one intact.
+
+**Billing**
+
+- **Pro runs on StoreKit directly.** Purchases, restore and entitlement checks go through Apple's StoreKit on the device, and the app contains no third-party SDK.
+- **The app connects to Apple and to nothing else.** The FAQ is built into the app, in English, Japanese, Thai and Chinese.
+
+**Language**
+
+- **The language chosen in Settings applies to every string** in the app.
+
+**Home**
+
+- **The scan band shows when it last ran**, flagged photos are counted beside the ghost, and the globe sits whole on screen.
+
+**This repository**
+
+- `Sources/Purchases/PurchaseManager.swift` is the StoreKit 2 purchase path, and `Sources/Purchases/ProEntitlementCache.swift` is the cache it feeds.
+- `Sources/Vault/VaultIntake.swift` seals each photo to its item identifier. `Sources/Vault/KeychainHelper.swift` and `Sources/Vault/VaultKeyBackup.swift` are updated to the shipping code.
+- `Sources/Security/Authenticator.swift`, `Sources/Vault/PinAttemptThrottle.swift` and `Sources/Vault/PanicPinStore.swift` are the App Lock and PIN code.
+- `README.md`, `FAQ.md` and `ARCHITECTURE.md` describe the StoreKit purchase path and the per-record vault seal. All source headers read v2.6.8.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-10-30 – Version 2.6.7
 
 Clean & Share sends a copy of a photo without its location, camera or time details, and NuDefndr is ready for iPhone Duo.

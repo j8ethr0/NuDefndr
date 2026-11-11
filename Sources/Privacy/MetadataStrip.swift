@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Metadata stripping for the vault and clean sharing (v2.6.7)
+// Transparency Repository - Metadata stripping for the vault and clean sharing (v2.6.8)
 
 import Foundation
 import ImageIO
@@ -7,11 +7,8 @@ import ImageIO
 enum MetadataStrip {
     struct Disclosure: Equatable {
         var hasLocation = false
-
         var camera: String?
-
         var taken: Date?
-
         var hasOther = false
 
         var isEmpty: Bool { !hasLocation && camera == nil && taken == nil && !hasOther }
@@ -74,7 +71,6 @@ enum MetadataStrip {
         guard isReadableImage(source) else { return false }
         for index in 0..<CGImageSourceGetCount(source) {
             guard let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] else { return false }
-
             for key in removedDictionaries {
                 guard let block = properties[key] as? [CFString: Any] else { continue }
                 let harmless = key == kCGImagePropertyTIFFDictionary ? harmlessTIFF
@@ -132,7 +128,6 @@ enum MetadataStrip {
         kCGImagePropertyMakerFujiDictionary,
         kCGImagePropertyMakerOlympusDictionary,
         kCGImagePropertyMakerPentaxDictionary,
-
         kCGImagePropertyDNGDictionary,
         kCGImagePropertyCIFFDictionary,
         kCGImageProperty8BIMDictionary
@@ -142,7 +137,6 @@ enum MetadataStrip {
         let isPNG = CGImageSourceGetType(source).map { $0 as String == "public.png" } ?? false
         for index in 0..<CGImageSourceGetCount(source) {
             var removal = Dictionary(uniqueKeysWithValues: removedDictionaries.map { ($0, kCFNull as Any) })
-
             if isPNG {
                 removal[kCGImagePropertyPNGDictionary] = Dictionary(uniqueKeysWithValues: pngText.map { ($0, kCFNull as Any) })
             }

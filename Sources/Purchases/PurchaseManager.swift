@@ -1,19 +1,29 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Subscription entitlements (v2.6.7)
+// Transparency Repository - Subscription entitlements (v2.6.8)
 
 import Foundation
-import RevenueCat
 import StoreKit
 import Combine
 import OSLog
+import UIKit
 
 @MainActor
 class PurchaseManager: ObservableObject {
-    @Published var offerings: Offerings? = nil
-    @Published var customerInfo: CustomerInfo? = nil
+    enum ProductID {
+        static let monthly = "com.dro1d.nudefndr.monthly"
+        static let annual = "com.dro1d.nudefndr.annual"
+        static let lifetime = "com.dro1d.nudefndr.lifetime"
+        static let all = [monthly, annual, lifetime]
+        static let subscriptionGroupID = "21677352"
+    }
+
+    @Published var products: [Product] = []
+    @Published var introOfferEligibility: [String: Bool] = [:]
     @Published var isProUser: Bool = false
     @Published var isLifetimeOwner: Bool = false
     @Published var isLoading: Bool = false
+    @Published var isFetchingProducts: Bool = false
+    @Published var pendingNotice: String? = nil
     @Published var lastError: String? = nil
     @Published var offeringsError: String? = nil
     @Published var restoreOutcome: RestoreOutcome? = nil
@@ -48,7 +58,18 @@ class PurchaseManager: ObservableObject {
         }
     }
 
-    private var customerInfoStreamTask: Task<Void, Never>? = nil
+    struct EntitlementSnapshot: Equatable {
+        var ownsLifetime = false
+        var subscriptionProductID: String? = nil
+        var subscriptionExpiration: Date? = nil
+        var willRenew = false
+
+        var isPro: Bool { ownsLifetime || subscriptionProductID != nil }
+    }
+
+    @Published private(set) var entitlements: EntitlementSnapshot? = nil
+
+    private var transactionUpdatesTask: Task<Void, Never>? = nil
     private var isConfigured: Bool = false
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PurchaseManager")
 
@@ -60,182 +81,307 @@ class PurchaseManager: ObservableObject {
         self.isProUser = ProEntitlementCache.isPro
         self.isLifetimeOwner = UserDefaults.standard.bool(forKey: AppKeys.lastKnownLifetimeEntitlement)
 
+        listenForTransactionUpdates()
+
         Task {
-            await fetchInitialCustomerInfo()
+            await refreshEntitlements()
         }
     }
 
     deinit {
-        customerInfoStreamTask?.cancel()
+        transactionUpdatesTask?.cancel()
     }
 
     func configureAndFetch() async {
         guard !isConfigured else {
-            logger.info("Already configured. Refreshing data...")
-            await fetchOfferingsAsyncWithRetry()
+            if products.isEmpty { await fetchProductsWithRetry() }
             return
         }
 
-        logger.info("Configuring RevenueCat SDK and fetching initial data...")
-
-        isLoading = true
+        logger.info("Configuring StoreKit and fetching initial data...")
         isConfigured = true
         lastError = nil
 
-        await fetchInitialCustomerInfo()
+        await finishOutstandingTransactions()
+        await refreshEntitlements()
 
-        listenForCustomerInfoUpdates()
-        logger.info("Started listening for CustomerInfo updates.")
-
-        await fetchOfferingsAsyncWithRetry()
-
-        logger.info("Initial configuration and fetch process started (isLoading will be updated by fetchOfferings).")
-
-        validateReceiptPath()
+        Task { await fetchProductsWithRetry() }
+        logger.info("Initial configuration complete; price list loading.")
     }
 
-    private func listenForCustomerInfoUpdates() {
-        customerInfoStreamTask?.cancel()
-        customerInfoStreamTask = Task { [weak self] in
-            let stream = Purchases.shared.customerInfoStream
-            for await info in stream {
+    private func listenForTransactionUpdates() {
+        transactionUpdatesTask?.cancel()
+        transactionUpdatesTask = Task { [weak self] in
+            for await result in Transaction.updates {
                 guard !Task.isCancelled else { break }
-                self?.logger.info("Received update from customerInfoStream.")
-                self?.handleCustomerInfoUpdate(info)
+                guard let self else { break }
+                switch result {
+                case .verified(let transaction):
+                    self.logger.info("Transaction update: \(transaction.productID, privacy: .public) (\(String(describing: transaction.productType), privacy: .public))")
+                    await transaction.finish()
+                case .unverified(let transaction, let error):
+                    self.logger.error("Unverified transaction update for \(transaction.productID, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                }
+                await self.refreshEntitlements()
             }
-            self?.logger.info("CustomerInfo stream listener finished.")
+            self?.logger.info("Transaction update listener finished.")
         }
     }
 
-    private func fetchInitialCustomerInfo() async {
-        logger.info("Fetching initial CustomerInfo...")
+    private func finishOutstandingTransactions() async {
+        for await result in Transaction.unfinished {
+            if case .verified(let transaction) = result {
+                logger.info("Finishing outstanding transaction for \(transaction.productID, privacy: .public)")
+                await transaction.finish()
+            }
+        }
+    }
+
+    func refreshEntitlements() async {
+        let snapshot = await readEntitlements()
+        guard await mayDemote(given: snapshot, authoritative: false) else { return }
+        applyEntitlements(snapshot)
+    }
+
+    private static let emptyReadsKey = "proEntitlementEmptyReads"
+
+    private func mayDemote(given snapshot: EntitlementSnapshot, authoritative: Bool) async -> Bool {
+        let defaults = UserDefaults.standard
+        guard !snapshot.isPro, ProEntitlementCache.isPro else {
+            defaults.removeObject(forKey: Self.emptyReadsKey)
+            return true
+        }
+        let app = UIApplication.shared
+        guard app.isProtectedDataAvailable, app.applicationState != .background else {
+            logger.info("Empty entitlement read while not in front; keeping the last verified answer.")
+            return false
+        }
+        if Self.installRanRevenueCat, !(await Self.hasAnyTransaction()) {
+            logger.notice("Pro with no App Store transaction on a RevenueCat install: carrying the entitlement over.")
+            return false
+        }
+        if authoritative { return true }
+        let emptyReads = defaults.integer(forKey: Self.emptyReadsKey) + 1
+        defaults.set(emptyReads, forKey: Self.emptyReadsKey)
+        guard emptyReads >= 2 else {
+            logger.notice("First empty entitlement read for a Pro account; keeping Pro until the App Store confirms it.")
+            return false
+        }
+        return true
+    }
+
+    private static var installRanRevenueCat: Bool {
+        UserDefaults.standard.dictionaryRepresentation().keys.contains { $0.hasPrefix("com.revenuecat.") }
+    }
+
+    private static func hasAnyTransaction() async -> Bool {
+        for await _ in Transaction.all { return true }
+        return false
+    }
+
+    func sceneDidBecomeActive() {
+        guard isConfigured else { return }
+        Task { await refreshEntitlements() }
+    }
+
+    private func readEntitlements() async -> EntitlementSnapshot {
+        var snapshot = EntitlementSnapshot()
+
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else {
+                logger.warning("Skipping unverified entitlement.")
+                continue
+            }
+            if transaction.revocationDate != nil { continue }
+
+            switch transaction.productType {
+            case .nonConsumable:
+                if transaction.productID == ProductID.lifetime
+                    || transaction.productID.lowercased().contains("lifetime") {
+                    snapshot.ownsLifetime = true
+                }
+            case .autoRenewable:
+                let current = snapshot.subscriptionExpiration ?? .distantPast
+                if (transaction.expirationDate ?? .distantFuture) >= current {
+                    snapshot.subscriptionProductID = transaction.productID
+                    snapshot.subscriptionExpiration = transaction.expirationDate
+                }
+            default:
+                break
+            }
+        }
+
+        if snapshot.subscriptionProductID != nil {
+            snapshot.willRenew = await subscriptionWillRenew(for: snapshot.subscriptionProductID)
+        }
+        return snapshot
+    }
+
+    private func subscriptionWillRenew(for productID: String?) async -> Bool {
         do {
-            let info = try await Purchases.shared.customerInfo()
-            handleCustomerInfoUpdate(info)
+            let statuses: [Product.SubscriptionInfo.Status]
+            if let product = products.first(where: { $0.id == productID }), let info = product.subscription {
+                statuses = try await info.status
+            } else {
+                statuses = try await Product.SubscriptionInfo.status(for: ProductID.subscriptionGroupID)
+            }
+            for status in statuses {
+                switch status.state {
+                case .subscribed, .inGracePeriod, .inBillingRetryPeriod:
+                    if case .verified(let renewal) = status.renewalInfo {
+                        return renewal.willAutoRenew
+                    }
+                default:
+                    continue
+                }
+            }
         } catch {
-            logger.error("Error fetching initial CustomerInfo: \(error.localizedDescription)")
-            lastError = String(format: String(localized: "PURCHASE_ERROR_FETCH_USER_DATA", defaultValue: "Could not fetch user data. %@", comment: "Shown when the initial customer info fetch fails. %@ = system error description"), error.localizedDescription)
+            logger.warning("Could not read subscription status: \(error.localizedDescription, privacy: .public)")
         }
+        return false
     }
 
-    func fetchOfferingsAsyncWithRetry() async {
-        if !isLoading { isLoading = true }
+    private func applyEntitlements(_ snapshot: EntitlementSnapshot) {
+        entitlements = snapshot
+
+        let newIsPro = snapshot.isPro
+        if newIsPro != isProUser {
+            isProUser = newIsPro
+        }
+        let entitlementChanged = ProEntitlementCache.isPro != newIsPro
+        ProEntitlementCache.record(newIsPro)
+        if entitlementChanged {
+            ProtectionWidgetData.sync()
+        }
+
+        let newIsLifetime = snapshot.ownsLifetime
+        if newIsLifetime != isLifetimeOwner { isLifetimeOwner = newIsLifetime }
+        UserDefaults.standard.set(newIsLifetime, forKey: AppKeys.lastKnownLifetimeEntitlement)
+
+        logger.info(" Entitlements processed. isProUser: \(newIsPro), isLifetimeOwner: \(newIsLifetime), subscription: \(snapshot.subscriptionProductID ?? "none", privacy: .public)")
+    }
+
+    func fetchProductsWithRetry() async {
+        guard !isFetchingProducts else { return }
+        isFetchingProducts = true
+        defer { isFetchingProducts = false }
         offeringsError = nil
         var currentAttempt = 0
 
         while currentAttempt <= maxFetchRetryAttempts {
             currentAttempt += 1
-            logger.info(" Fetching offerings... (Attempt \(currentAttempt)/\(self.maxFetchRetryAttempts + 1))")
+            logger.info(" Fetching products... (Attempt \(currentAttempt)/\(self.maxFetchRetryAttempts + 1))")
 
             do {
-                let fetchedOfferings = try await Purchases.shared.offerings()
-                logger.info(" Offerings fetched successfully.")
-                if offerings?.all.count != fetchedOfferings.all.count {
-                    offerings = fetchedOfferings
-                }
-                offeringsError = nil
-                if isLoading {
-                    isLoading = false
-                }
-                return
-            } catch let rcError as RevenueCat.ErrorCode {
-                logger.error(" Error fetching offerings (Attempt \(currentAttempt)): RC Code \(rcError) - \(rcError.localizedDescription)")
-                offeringsError = rcError.localizedDescription
+                let fetched = try await Product.products(for: ProductID.all)
+                let ordered = ProductID.all.compactMap { id in fetched.first { $0.id == id } }
+                logger.info(" Products fetched successfully: \(ordered.map(\.id).joined(separator: ", "), privacy: .public)")
 
-                let isRetryableError = rcError == .networkError ||
-                rcError == .offlineConnectionError ||
-                rcError == .configurationError ||
-                rcError == .unexpectedBackendResponseError
-
-                if isRetryableError && currentAttempt <= self.maxFetchRetryAttempts {
-                    let delaySeconds = min(maxRetryDelaySeconds, pow(2.0, Double(currentAttempt - 1)) * initialRetryDelaySeconds)
-                    let delayNanoseconds = UInt64(delaySeconds * 1_000_000_000)
-                    logger.warning(" Retrying fetch after \(delaySeconds)s delay...")
-
-                    let retrySuccessful = await Task { () -> Bool in
-                        try? await Task.sleep(nanoseconds: delayNanoseconds)
-                        guard self.isLoading else {
-                            self.logger.info("Skipping retry as loading state changed.")
-                            return false
-                        }
-                        return true
-                    }.value
-
-                    guard retrySuccessful else {
-                        logger.info("Retry cancelled or loading state changed, exiting fetch loop.")
-                        if self.isLoading { self.isLoading = false }
-                        return
-                    }
-                } else {
-                    logger.error("Fetch offerings failed definitively after \(currentAttempt) attempts or due to non-retryable error.")
-                    if isLoading {
-                        isLoading = false
-                    }
+                if ordered.isEmpty {
+                    offeringsError = String(localized: "PURCHASE_ERROR_CONFIG",
+                                            defaultValue: "The store is temporarily unavailable. Please try again later.")
                     return
                 }
-            } catch {
-                logger.error(" Fetch offerings failed definitively after \(currentAttempt) attempts with non-RC error: \(error.localizedDescription)")
-                offeringsError = error.localizedDescription
-                if isLoading {
-                    isLoading = false
+
+                if products.map(\.id) != ordered.map(\.id) {
+                    products = ordered
                 }
+                introOfferEligibility = await introOfferEligibility(for: ordered)
+                offeringsError = nil
                 return
+            } catch {
+                logger.error(" Error fetching products (Attempt \(currentAttempt)): \(error.localizedDescription, privacy: .public)")
+                offeringsError = friendlyMessage(for: error, restoring: false)
+
+                if isRetryable(error) && currentAttempt <= self.maxFetchRetryAttempts {
+                    let delaySeconds = min(maxRetryDelaySeconds, pow(2.0, Double(currentAttempt - 1)) * initialRetryDelaySeconds)
+                    logger.warning(" Retrying fetch after \(delaySeconds)s delay...")
+                    try? await Task.sleep(for: .seconds(delaySeconds))
+                } else {
+                    logger.error("Fetch products failed definitively after \(currentAttempt) attempts or due to non-retryable error.")
+                    return
+                }
             }
         }
-        logger.error("Fetch offerings failed after max (\(self.maxFetchRetryAttempts + 1)) attempts.")
-        if isLoading {
-            isLoading = false
+        logger.error("Fetch products failed after max (\(self.maxFetchRetryAttempts + 1)) attempts.")
+    }
+
+    private func introOfferEligibility(for products: [Product]) async -> [String: Bool] {
+        var eligibility: [String: Bool] = [:]
+        for product in products {
+            guard let subscription = product.subscription, subscription.introductoryOffer != nil else { continue }
+            eligibility[product.id] = await subscription.isEligibleForIntroOffer
         }
+        return eligibility
+    }
+
+    private func isRetryable(_ error: Error) -> Bool {
+        if let storeKitError = error as? StoreKitError {
+            switch storeKitError {
+            case .networkError, .systemError, .unknown:
+                return true
+            default:
+                return false
+            }
+        }
+        return (error as NSError).domain == NSURLErrorDomain
     }
 
     func retryFetchingOfferings() {
         logger.info("Manual retry tapped.")
-        guard !isLoading else {
+        guard !isFetchingProducts else {
             logger.info("Manual retry skipped, already loading.")
             return
         }
         Task {
-            await fetchOfferingsAsyncWithRetry()
+            await fetchProductsWithRetry()
         }
     }
 
-    func resetStoreConnectionAndFetch() async {
-        logger.info(" Resetting store connection...")
-        isLoading = true
-        lastError = nil
-
-        logger.debug("Attempting AppStore.sync()...")
-        do {
-            try await AppStore.sync()
-            logger.info(" AppStore.sync() completed successfully.")
-        } catch {
-            logger.warning(" AppStore.sync() failed: \(error.localizedDescription)")
-        }
-
-        Purchases.shared.invalidateCustomerInfoCache()
-        logger.info("RC CustomerInfo cache invalidated.")
-
-        logger.info("Triggering fetchOfferings after reset.")
-        await self.fetchOfferingsAsyncWithRetry()
-    }
-
-    func purchase(package: Package) async {
+    func purchase(product: Product) async {
         guard !isLoading else { logger.warning("Purchase skipped, already processing."); return }
         isLoading = true
         lastError = nil
-        logger.info(" Starting purchase for package: \(package.identifier)...")
+        logger.info(" Starting purchase for product: \(product.id, privacy: .public)...")
         do {
-            let result = try await Purchases.shared.purchase(package: package)
-            if let transaction = result.transaction {
-                logger.info(" Purchase successful for product: \(transaction.productIdentifier)")
+            let result: Product.PurchaseResult
+            if let scene = Self.activeScene {
+                result = try await product.purchase(confirmIn: scene)
             } else {
-                logger.info(" Purchase/Restore process completed via RC. Transaction details may arrive via listener.")
+                result = try await product.purchase()
             }
-            handleCustomerInfoUpdate(result.customerInfo)
+            switch result {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    logger.info(" Purchase successful for product: \(transaction.productID, privacy: .public)")
+                    await transaction.finish()
+                    await refreshEntitlements()
+                case .unverified(let transaction, let error):
+                    logger.error(" Purchase of \(transaction.productID, privacy: .public) could not be verified: \(error.localizedDescription, privacy: .public)")
+                    lastError = String(localized: "PURCHASE_ERROR_RECEIPT",
+                                       defaultValue: "The App Store could not confirm this purchase. Make sure you are signed in to the App Store and try again.")
+                }
+            case .pending:
+                logger.warning(" Purchase is pending (e.g., Ask to Buy).")
+                pendingNotice = String(localized: "PURCHASE_ERROR_PENDING",
+                                       defaultValue: "Payment is awaiting approval. Your purchase will unlock automatically once it is approved.")
+            case .userCancelled:
+                logger.info(" User cancelled the purchase.")
+                lastError = nil
+            @unknown default:
+                logger.warning(" Purchase returned an unknown result.")
+            }
             logger.info("Purchase check completed. isProUser: \(self.isProUser)")
-        } catch let rcError as RevenueCat.ErrorCode { handlePurchaseError(rcError); logger.error(" Purchase failed with RC ErrorCode: \(rcError.localizedDescription)") }
-        catch { lastError = error.localizedDescription; logger.error(" Purchase failed with generic error: \(error.localizedDescription)") }
+        } catch {
+            handlePurchaseError(error)
+        }
         isLoading = false
+    }
+
+    private static var activeScene: UIWindowScene? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
     }
 
     func restorePurchases() async {
@@ -245,24 +391,24 @@ class PurchaseManager: ObservableObject {
         restoreOutcome = nil
         logger.info(" Restoring purchases...")
         do {
-            let info = try await Purchases.shared.restorePurchases()
-            let restored = info.entitlements["pro"]?.isActive == true
+            try await AppStore.sync()
+
+            let snapshot = await readEntitlements()
+            let restored = snapshot.isPro
             logger.info(" Restore completed. Pro entitlement active: \(restored)")
             restoreOutcome = restored ? .restored : .noPurchasesFound
-            handleCustomerInfoUpdate(info)
+            if await mayDemote(given: snapshot, authoritative: true) {
+                applyEntitlements(snapshot)
+            }
             HapticManager.shared.notification(restored ? .success : .warning)
-        } catch let rcError as RevenueCat.ErrorCode {
-            logger.error(" Restore failed with RC ErrorCode: \(rcError.localizedDescription)")
-            if rcError == .purchaseCancelledError {
+        } catch {
+            logger.error(" Restore failed: \(error.localizedDescription, privacy: .public)")
+            if isCancellation(error) {
                 restoreOutcome = nil
             } else {
-                restoreOutcome = .failed(friendlyMessage(for: rcError, restoring: true))
+                restoreOutcome = .failed(friendlyMessage(for: error, restoring: true))
                 HapticManager.shared.notification(.error)
             }
-        } catch {
-            logger.error(" Restore failed with generic error: \(error.localizedDescription)")
-            restoreOutcome = .failed(error.localizedDescription)
-            HapticManager.shared.notification(.error)
         }
         isLoading = false
     }
@@ -273,37 +419,30 @@ class PurchaseManager: ObservableObject {
     }
 
     func proSubscriptionSummary() -> SubscriptionSummary? {
-        guard let info = customerInfo,
-              let entitlement = info.entitlements["pro"], entitlement.isActive else {
+        guard let snapshot = entitlements, snapshot.isPro else {
             return nil
         }
 
-        if ownsLifetime(info) {
+        if snapshot.ownsLifetime {
             return SubscriptionSummary(planLabel: String(localized: "PLAN_NAME_LIFETIME"),
                                        detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
                                                       defaultValue: "One-time purchase"))
         }
 
-        guard let expiration = entitlement.expirationDate else {
+        guard let productID = snapshot.subscriptionProductID,
+              let expiration = snapshot.subscriptionExpiration else {
             return SubscriptionSummary(planLabel: String(localized: "PLAN_NAME_LIFETIME"),
                                        detail: String(localized: "SETTINGS_PLAN_LIFETIME_DETAIL",
                                                       defaultValue: "One-time purchase"))
         }
 
         let dateString = expiration.formatted(date: .abbreviated, time: .omitted)
-        let detail = entitlement.willRenew
+        let detail = snapshot.willRenew
             ? String(format: String(localized: "SETTINGS_PLAN_RENEWS",
                                     defaultValue: "Renews %@"), dateString)
             : String(format: String(localized: "SETTINGS_PLAN_ENDS",
                                     defaultValue: "Ends %@"), dateString)
-        return SubscriptionSummary(planLabel: planLabel(forProductID: entitlement.productIdentifier), detail: detail)
-    }
-
-    private func ownsLifetime(_ info: CustomerInfo) -> Bool {
-        if info.nonSubscriptions.contains(where: { $0.productIdentifier.lowercased().contains("lifetime") }) {
-            return true
-        }
-        return info.allPurchasedProductIdentifiers.contains { $0.lowercased().contains("lifetime") }
+        return SubscriptionSummary(planLabel: planLabel(forProductID: productID), detail: detail)
     }
 
     private func planLabel(forProductID id: String) -> String {
@@ -314,86 +453,67 @@ class PurchaseManager: ObservableObject {
         return "PRO"
     }
 
-    private func handleCustomerInfoUpdate(_ info: CustomerInfo) {
-        customerInfo = info
-
-        let newIsPro = info.entitlements["pro"]?.isActive == true
-        if newIsPro != isProUser {
-            isProUser = newIsPro
-        }
-        let entitlementChanged = ProEntitlementCache.isPro != newIsPro
-        ProEntitlementCache.record(newIsPro)
-        if entitlementChanged {
-            ProtectionWidgetData.sync()
-        }
-
-        let newIsLifetime = ownsLifetime(info)
-        if newIsLifetime != isLifetimeOwner { isLifetimeOwner = newIsLifetime }
-        UserDefaults.standard.set(newIsLifetime, forKey: AppKeys.lastKnownLifetimeEntitlement)
-
-        logger.info(" CustomerInfo processed. isProUser: \(newIsPro), isLifetimeOwner: \(newIsLifetime)")
-        if !info.entitlements.active.isEmpty {
-            logger.debug("Active entitlements: \(info.entitlements.active.keys.joined(separator: ", "))")
-        }
-    }
-    private func handlePurchaseError(_ error: RevenueCat.ErrorCode) {
-        if error == .purchaseCancelledError {
+    private func handlePurchaseError(_ error: Error) {
+        if isCancellation(error) {
             logger.info(" User cancelled the purchase.")
             lastError = nil
             return
         }
+        logger.error(" Purchase failed: \(error.localizedDescription, privacy: .public)")
         lastError = friendlyMessage(for: error, restoring: false)
     }
 
-    private func friendlyMessage(for error: RevenueCat.ErrorCode, restoring: Bool) -> String {
-        switch error {
-        case .paymentPendingError:
-            logger.warning(" Purchase is pending (e.g., Ask to Buy).")
-            return String(localized: "PURCHASE_ERROR_PENDING",
-                          defaultValue: "Payment is awaiting approval. Your purchase will unlock automatically once it is approved.")
-        case .purchaseNotAllowedError:
-            return String(localized: "PURCHASE_ERROR_NOT_ALLOWED",
-                          defaultValue: "Purchases are not allowed on this device. Check Screen Time restrictions in Settings.")
-        case .productAlreadyPurchasedError:
-            return String(localized: "PURCHASE_ERROR_ALREADY_OWNED",
-                          defaultValue: "You already own this. Tap Restore Purchases to unlock it.")
-        case .invalidReceiptError, .missingReceiptFileError:
-            return restoring
-                ? String(localized: "RESTORE_ERROR_NO_RECEIPT",
-                         defaultValue: "No purchase record was found on this device. Make sure you are signed in to the App Store with the Apple Account you bought with.")
-                : String(localized: "PURCHASE_ERROR_RECEIPT",
-                         defaultValue: "The App Store could not confirm this purchase. Make sure you are signed in to the App Store and try again.")
-        case .receiptAlreadyInUseError, .receiptInUseByOtherSubscriberError:
-            return String(localized: "RESTORE_ERROR_RECEIPT_IN_USE",
-                          defaultValue: "That purchase is already linked to a different account. Contact support and we will sort it out.")
-        case .networkError, .offlineConnectionError:
-            return String(localized: "PURCHASE_ERROR_NETWORK",
-                          defaultValue: "No connection to the App Store. Check your network and try again.")
-        case .storeProblemError, .unknownBackendError, .unexpectedBackendResponseError:
-            return String(localized: "PURCHASE_ERROR_STORE",
-                          defaultValue: "The App Store is not responding. Please try again shortly.")
-        case .invalidCredentialsError, .configurationError:
-            return String(localized: "PURCHASE_ERROR_CONFIG",
-                          defaultValue: "The store is temporarily unavailable. Please try again later.")
-        default:
-            logger.error(" Unmapped RC error code: \(error) - \(error.localizedDescription)")
-            return String(localized: "PURCHASE_ERROR_GENERIC",
-                          defaultValue: "Something went wrong talking to the App Store. Please try again.")
-        }
+    private func isCancellation(_ error: Error) -> Bool {
+        if let storeKitError = error as? StoreKitError, case .userCancelled = storeKitError { return true }
+        return error is CancellationError
     }
-    private func validateReceiptPath() {
-        Task {
-            logger.debug("Performing diagnostic receipt validation check...")
-            do {
-                let info = try await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent)
-                logger.info(" Diagnostic receipt validation successful. Active entitlements: \(info.entitlements.active.count)")
-            } catch {
-                logger.warning(" Diagnostic receipt validation check failed: \(error.localizedDescription)")
-                if let rcError = error as? RevenueCat.ErrorCode,
-                   rcError == .receiptAlreadyInUseError || rcError == .invalidReceiptError {
-                    logger.error(" Possible persistent receipt validation path issue detected.")
-                }
+
+    private func friendlyMessage(for error: Error, restoring: Bool) -> String {
+        if let purchaseError = error as? Product.PurchaseError {
+            switch purchaseError {
+            case .purchaseNotAllowed:
+                return String(localized: "PURCHASE_ERROR_NOT_ALLOWED",
+                              defaultValue: "Purchases are not allowed on this device. Check Screen Time restrictions in Settings.")
+            case .productUnavailable, .invalidQuantity, .ineligibleForOffer,
+                 .invalidOfferIdentifier, .invalidOfferPrice, .invalidOfferSignature, .missingOfferParameters:
+                return String(localized: "PURCHASE_ERROR_CONFIG",
+                              defaultValue: "The store is temporarily unavailable. Please try again later.")
+            default:
+                break
             }
         }
+
+        if let storeKitError = error as? StoreKitError {
+            switch storeKitError {
+            case .networkError:
+                return String(localized: "PURCHASE_ERROR_NETWORK",
+                              defaultValue: "No connection to the App Store. Check your network and try again.")
+            case .systemError, .unknown:
+                return String(localized: "PURCHASE_ERROR_STORE",
+                              defaultValue: "The App Store is not responding. Please try again shortly.")
+            case .notAvailableInStorefront, .unsupported:
+                return String(localized: "PURCHASE_ERROR_CONFIG",
+                              defaultValue: "The store is temporarily unavailable. Please try again later.")
+            case .notEntitled:
+                return restoring
+                    ? String(localized: "RESTORE_ERROR_NO_RECEIPT",
+                             defaultValue: "No purchase record was found on this device. Make sure you are signed in to the App Store with the Apple Account you bought with.")
+                    : String(localized: "PURCHASE_ERROR_RECEIPT",
+                             defaultValue: "The App Store could not confirm this purchase. Make sure you are signed in to the App Store and try again.")
+            case .userCancelled:
+                return ""
+            default:
+                break
+            }
+        }
+
+        if (error as NSError).domain == NSURLErrorDomain {
+            return String(localized: "PURCHASE_ERROR_NETWORK",
+                          defaultValue: "No connection to the App Store. Check your network and try again.")
+        }
+
+        logger.error(" Unmapped StoreKit error: \(String(describing: error), privacy: .public)")
+        return String(localized: "PURCHASE_ERROR_GENERIC",
+                      defaultValue: "Something went wrong talking to the App Store. Please try again.")
     }
 }

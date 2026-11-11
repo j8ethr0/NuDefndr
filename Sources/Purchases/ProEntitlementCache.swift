@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Pro entitlement cache (v2.6.7)
+// Transparency Repository - Pro entitlement cache (v2.6.8)
 
 import Foundation
 

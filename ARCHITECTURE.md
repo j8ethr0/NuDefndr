@@ -16,6 +16,7 @@ the capture delivers.
 2. Capture: AVFoundation, in-app only — no `PHPhotoLibrary` write, no temporary file
 3. Encryption: ChaCha20-Poly1305 (CryptoKit)
 4. Key Storage: iOS Keychain (device-bound)
+5. Purchases: StoreKit 2, verified on the device
 
 ## Vault Memory Security
 
@@ -26,12 +27,19 @@ the capture delivers.
 - A separate 60-second grace timer also releases key material if the app is left backgrounded, and latches the vault locked so the next entry requires re-authentication.
 - No decrypted photo data is persisted. The key itself is persisted — in the Keychain, device-bound — because a random key that vanished would take the vault with it.
 
+## App Lock and PIN
+
+- **One grace rule.** `Authenticator.isWithinGracePeriod` is the single place it lives. The 60-second clock is measured on a monotonic clock that the date setting cannot move, and is stamped once, when the app goes from unlocked to locked. A quick trip away under a minute while unlocked needs no Face ID. Otherwise the lock screen is drawn, and a cancelled or failed Face ID stays on it.
+- **Instant Lock cancels any Face ID already in progress.** It advances a lock generation and invalidates the `LAContext`, so a prompt that was on screen cannot unlock the app after Instant Lock has locked it.
+- **PIN attempts are throttled.** Three attempts are free; after that the delay escalates from 30 seconds to an hour. The delay is measured on a monotonic clock that the date setting cannot move, within the boot recorded with it. It is stored in the Keychain, so reinstalling the app does not reset it, and a record that cannot be read is treated as a lockout.
+- **PIN credentials** are salted PBKDF2-SHA256 at 310,000 iterations, held in the Keychain as `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. The PIN itself is never stored. Credentials from earlier versions are upgraded at launch, and writes are serialised and made in place.
+
 ## Network
 
-There is no backend. Two requests leave the device, and this is all of them:
+There is no backend. One kind of connection leaves the device, and this is all of it:
 
-- **Subscription validation (RevenueCat).** Sends an anonymous subscriber identifier, receives entitlement status.
-- **The FAQ page.** Opening the FAQ screen fetches `nudefndr.com/faq.html` (or the `ja`/`th`/`zh` page for the app's language) so the in-app FAQ is the website's, not a second copy. Fetched over an ephemeral `URLSession` with no cookie or credential storage, inlined into one file and rendered with `baseURL: nil` so the web view issues nothing of its own, and cached so the screen works offline. Discloses an IP, a generic user-agent and which language page was asked for.
+- **Purchases (StoreKit).** Product prices, purchase, restore and entitlement checks go through Apple's StoreKit on the device. The app connects to Apple; there is no third-party SDK and no server of ours in that path.
+- **Not the FAQ.** The FAQ screen shows pages that ship inside the app, in English, Japanese, Thai and Chinese, read from the bundle and rendered with `baseURL: nil`, so the web view has nothing to fetch. Opening it makes no request: the pages carry no links, and the web view refuses every navigation but its own page.
 
 No analytics, crash reporting, remote config or push. `isNetworkAccessAllowed` on some read paths pulls the user's own photo from the iCloud library they enabled — inbound, nothing uploaded. The Location Cleaner names places from coordinates on-device rather than geocoding, which would send library-derived coordinates outbound.
 
@@ -43,6 +51,7 @@ No analytics, crash reporting, remote config or push. `isNetworkAccessAllowed` o
 ## Security Guarantees
 
 - **Authenticated encryption:** ChaCha20-Poly1305 AEAD. A modified or forged ciphertext fails the Poly1305 tag check and refuses to open.
+- **Sealed to its record:** each vault photo is sealed with authenticated data made of a versioned prefix (`nudefndr.vault.item.v1:`) followed by its item's UUID. A file therefore opens only for the item it was sealed for; two files swapped on disk, or a copy placed under another item's name, fail the tag check.
 - **Random keys:** the vault key comes from the system CSPRNG. It is not derived from a PIN, so PIN strength is not the vault's cryptographic strength.
 - **Nothing decrypted on disk:** decrypted image data is purged when the app backgrounds, and every derived artefact that does reach disk — vault files and thumbnails alike — is sealed. No plaintext copy of a vault photo is written anywhere at any point.
 - **One intake path:** photos imported from the library and photos taken with the in-app camera converge on a single function that strips metadata, seals with ChaCha20-Poly1305 and writes with complete file protection. This was two separate implementations before 2.6.2. One path means the metadata guarantee cannot hold on one route and lapse on the other, and it is why `.completeFileProtection` is structural rather than a line each caller has to remember.

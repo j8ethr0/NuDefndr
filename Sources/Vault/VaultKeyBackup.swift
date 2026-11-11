@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key backup & recovery (v2.6.7)
+// Transparency Repository - Vault key backup & recovery (v2.6.8)
 
 import Foundation
 import Security
@@ -66,6 +66,10 @@ enum VaultKeyBackup {
     }
 
     static func exportPrimaryKey(passphrase: String) throws -> URL {
+        guard !TravelMode.requiresVaultPin,
+              !UserDefaults.standard.bool(forKey: AppKeys.auditActiveRoot) else {
+            throw BackupError.noVaultKey
+        }
         guard let key = KeychainHelper.loadKey(forName: VaultRoot.primary.keychainName) else {
             throw VaultManager.primaryVaultHasStoredItems() ? BackupError.keyNotImportedYet : BackupError.noVaultKey
         }
@@ -139,6 +143,9 @@ enum VaultKeyBackup {
         let restoredKey = SymmetricKey(data: rawKeyData)
         guard VaultManager.keyOpensPrimaryVault(restoredKey) else {
             throw BackupError.keyFromAnotherVault
+        }
+        guard VaultManager.prepareForNewKey() else {
+            throw BackupError.keychainSaveFailed
         }
         guard KeychainHelper.saveKey(restoredKey, forName: VaultRoot.primary.keychainName) else {
             throw BackupError.keychainSaveFailed

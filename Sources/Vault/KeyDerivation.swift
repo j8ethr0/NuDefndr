@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Key derivation primitives (v2.6.7)
+// Transparency Repository - Key derivation primitives (v2.6.8)
 
 import Foundation
 import Security

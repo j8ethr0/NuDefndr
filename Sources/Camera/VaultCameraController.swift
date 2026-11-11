@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault camera capture session (v2.6.7)
+// Transparency Repository - Vault camera capture session (v2.6.8)
 
 import AVFoundation
 import UIKit
