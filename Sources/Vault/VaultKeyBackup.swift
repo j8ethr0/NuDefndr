@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Vault key backup & recovery (v2.6.8)
+// Transparency Repository - Vault key backup & recovery (v2.6.9)
 
 import Foundation
 import Security

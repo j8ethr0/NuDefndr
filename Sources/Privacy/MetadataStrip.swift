@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Metadata stripping for the vault and clean sharing (v2.6.8)
+// Transparency Repository - Metadata stripping for the vault and clean sharing (v2.6.9)
 
 import Foundation
 import ImageIO

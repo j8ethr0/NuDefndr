@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - PIN credential storage (v2.6.8)
+// Transparency Repository - PIN credential storage (v2.6.9)
 
 import Foundation
 import CryptoKit
@@ -32,7 +32,7 @@ enum PanicPinStore {
     private static func makeCredential(pin: String) -> Credential? {
         guard let salt = randomBytes(saltByteCount),
               let hash = derive(pin: pin, salt: salt, iterations: iterations) else {
-            AppLogger.security.error("Panic PIN: failed to derive credential")
+            AppLogger.security.debug("Panic PIN: failed to derive credential")
             return nil
         }
         return Credential(salt: salt, hash: hash, iterations: iterations)
@@ -64,14 +64,14 @@ enum PanicPinStore {
         if !hash.isEmpty {
             guard legacySHA256Hex(pin) == hash else { return false }
             set(pin: pin)
-            AppLogger.security.info("Panic PIN upgraded to PBKDF2 (from legacy hash)")
+            AppLogger.security.debug("Panic PIN upgraded to PBKDF2 (from legacy hash)")
             return true
         }
         let plaintext = legacyPlaintext
         if !plaintext.isEmpty {
             guard pin == plaintext else { return false }
             set(pin: pin)
-            AppLogger.security.info("Panic PIN upgraded to PBKDF2 (from legacy plaintext)")
+            AppLogger.security.debug("Panic PIN upgraded to PBKDF2 (from legacy plaintext)")
             return true
         }
         return false
@@ -91,7 +91,7 @@ enum PanicPinStore {
         let hash = legacyHash
         guard let pin = plaintext.isEmpty ? recoverLegacyPIN(fromHash: hash) : plaintext else {
             if !hash.isEmpty {
-                AppLogger.security.error("Panic PIN: legacy hash matched no 4-digit PIN; left for verify")
+                AppLogger.security.debug("Panic PIN: legacy hash matched no 4-digit PIN; left for verify")
             }
             return
         }
@@ -100,7 +100,7 @@ enum PanicPinStore {
             guard loadCredentialData() == nil, legacyPlaintext == plaintext, legacyHash == hash else { return false }
             return commit(credential)
         }
-        if migrated { AppLogger.security.info("Panic PIN: migrated legacy credential to PBKDF2 at launch") }
+        if migrated { AppLogger.security.debug("Panic PIN: migrated legacy credential to PBKDF2 at launch") }
     }
 
     private static func recoverLegacyPIN(fromHash hash: String) -> String? {
@@ -153,7 +153,7 @@ enum PanicPinStore {
             status = SecItemAdd(add as CFDictionary, nil)
         }
         if status != errSecSuccess {
-            AppLogger.security.error("Panic PIN: keychain store failed (status: \(status, privacy: .public))")
+            AppLogger.security.debug("Panic PIN: keychain store failed (status: \(status, privacy: .public))")
         }
         return status == errSecSuccess
     }

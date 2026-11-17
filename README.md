@@ -1,6 +1,6 @@
 # NuDefndr - Transparency Repository
 
-![Version](https://img.shields.io/badge/version-2.6.8-blue)
+![Version](https://img.shields.io/badge/version-2.6.9-blue)
 ![Platform](https://img.shields.io/badge/iOS-18%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-4-orange)
@@ -16,9 +16,9 @@ Privacy-first iOS app for detecting sensitive content using Apple's on-device ML
 
 ## Latest Update
 
-**2026-11-04 – Version 2.6.8**
+**2026-11-14 – Version 2.6.9**
 
-Every vault photo is sealed to its own record, Pro runs on Apple's StoreKit with no third-party SDK, and the language chosen in Settings applies throughout the app. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
+A Vault Camera on the Lock Screen that seals each photo as it is taken, and vault albums and labels sealed under the vault key. See [CHANGELOG.md](CHANGELOG.md) for full version history and transparency repository updates.
 
 ---
 
@@ -27,6 +27,8 @@ Every vault photo is sealed to its own record, Pro runs on Apple's StoreKit with
 - Vault Encryption (ChaCha20-Poly1305)
 - Vault Intake: Metadata Stripping and Sealing (ImageIO, ChaCha20-Poly1305)
 - Vault Camera Capture Session (AVFoundation)
+- Lock Screen Camera Sealing (HPKE: X25519, HKDF-SHA256, ChaCha20-Poly1305)
+- Sealed Albums and Labels (ChaCha20-Poly1305)
 - Keychain Integration (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
 - SensitiveContentAnalysis Framework Wrapper
 
@@ -40,6 +42,7 @@ Every vault photo is sealed to its own record, Pro runs on Apple's StoreKit with
 
 - **ChaCha20-Poly1305 AEAD:** 256-bit authenticated encryption. The Poly1305 tag is verified on every decrypt, so modified or forged ciphertext fails to open rather than returning garbage.
 - **Sealed to its record:** each vault photo is sealed with its item identifier as ChaCha20-Poly1305 authenticated data, so a file opens only for the record it was sealed for. Two files swapped on disk fail the tag check.
+- **Lock Screen captures:** the Lock Screen camera seals each photo with HPKE to a public key. The matching private keys are held in a keyring sealed under a subkey of the vault key, so a capture can be opened only once the vault is unlocked, and it then takes the same strip-and-seal path as every other photo.
 - **Random vault key:** the vault key is a 256-bit key from the system CSPRNG — not derived from a PIN or passphrase. It lives in the Keychain and is dropped from RAM when the app leaves the foreground; no decrypted photo data is ever written to disk.
 - **Device-bound storage:** the key is stored `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so it is readable only while the device is unlocked and never migrates to another device or to iCloud.
 - **Key derivation, where it is actually used:** PBKDF2-HMAC-SHA256 at 310,000 iterations for PIN credentials, and 600,000 iterations for the passphrase that wraps an exported key-backup file. The vault key itself is random, so no derivation is involved in opening the vault.
@@ -66,8 +69,12 @@ The published sources back the claims above directly — read the file, not just
 | [`Sources/Purchases/ProEntitlementCache.swift`](Sources/Purchases/ProEntitlementCache.swift) | The locally cached Pro flag the UI reads, so a launch does not gate features on a network round-trip |
 | [`Sources/FAQ/FAQPages.swift`](Sources/FAQ/FAQPages.swift) | The in-app FAQ — four self-contained pages in the app bundle (en, ja, th, zh), read from disk with no network code |
 | [`Sources/FAQ/FAQWebPage.swift`](Sources/FAQ/FAQWebPage.swift) | The FAQ renderer — non-persistent data store, `baseURL: nil`; the FAQ carries no links and loads nothing; every navigation but its own page is refused |
-| [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift) | The path every photo takes into the vault, imported or captured — metadata removed by `MetadataStrip`, then sealed with ChaCha20-Poly1305 and written with complete file protection |
+| [`Sources/Vault/VaultIntake.swift`](Sources/Vault/VaultIntake.swift) | The path every photo takes into the vault, imported, captured or from the Lock Screen — metadata removed by `MetadataStrip`, then sealed with ChaCha20-Poly1305 and written with complete file protection |
 | [`Sources/Privacy/MetadataStrip.swift`](Sources/Privacy/MetadataStrip.swift) | The one metadata strip, shared by the vault and Clean & Share — GPS, EXIF, TIFF, IPTC, XMP and every camera maker's notes removed with ImageIO, orientation kept, and a clean copy checked against an allow-list before it leaves the phone |
+| [`Sources/LockScreenCamera/LockedCaptureFormat.swift`](Sources/LockScreenCamera/LockedCaptureFormat.swift) | The Lock Screen camera's sealed file — HPKE (X25519, HKDF-SHA256, ChaCha20-Poly1305) to a public key, the whole header as authenticated data, the capture time inside the ciphertext. The camera can seal but never open |
+| [`Sources/LockScreenCamera/LockedCaptureKeyring.swift`](Sources/LockScreenCamera/LockedCaptureKeyring.swift) | The private keys that open captures — sealed with ChaCha20-Poly1305 under an HKDF subkey of the vault key, stored inside the vault, rotated every 30 days |
+| [`Sources/LockScreenCamera/LockedCaptureInbox.swift`](Sources/LockScreenCamera/LockedCaptureInbox.swift) | Waiting captures — read by header only, size-capped, kept out of device backups, and made unopenable once taken in |
+| [`Sources/Vault/VaultAlbumStore.swift`](Sources/Vault/VaultAlbumStore.swift) | Album names and photo labels — sealed with ChaCha20-Poly1305 under an HKDF subkey of the vault key, written atomically with complete file protection |
 
 Each of these is shipping code, with debug-only branches resolved to the release
 build. The call that seals a vault photo to its item identifier and writes it is

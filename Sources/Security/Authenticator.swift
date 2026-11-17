@@ -1,9 +1,10 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - App Lock authentication and grace rule (v2.6.8)
+// Transparency Repository - App Lock authentication and grace rule (v2.6.9)
 
 import Foundation
 import LocalAuthentication
 import SwiftUI
+import UIKit
 
 @MainActor
 class Authenticator: ObservableObject {
@@ -145,7 +146,10 @@ class Authenticator: ObservableObject {
         leftUnlockedAt = nil
         lockGeneration &+= 1
         evaluatingContext?.invalidate()
-        AppLogger.security.info("Panic lock engaged - grace period voided")
+        AppLogger.security.debug("Panic lock engaged - grace period voided")
+        if UIApplication.shared.applicationState == .active {
+            HapticManager.shared.impact(.heavy)
+        }
     }
 
     private func errorMessage(for code: LAError.Code) -> String {

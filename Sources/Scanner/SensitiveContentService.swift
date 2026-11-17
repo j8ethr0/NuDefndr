@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - On-device sensitive content analysis (v2.6.8)
+// Transparency Repository - On-device sensitive content analysis (v2.6.9)
 
 import Foundation
 import SensitiveContentAnalysis
@@ -12,28 +12,39 @@ class SensitiveContentService {
     private let analyzer = SCSensitivityAnalyzer()
     private let logger = Logger(subsystem: "com.dro1d.PicDefndr", category: "SensitiveContent")
 
-    private var cachedPolicy: SCSensitivityAnalysisPolicy?
-    private var lastPolicyCheck: Date?
+    private struct PolicyCache {
+        var policy: SCSensitivityAnalysisPolicy?
+        var checkedAt: Date?
+    }
+    private let policyCache = OSAllocatedUnfairLock(initialState: PolicyCache())
     private let policyCacheInterval: TimeInterval = 5.0
 
     var isSensitiveContentWarningEnabled: Bool {
-        let now = Date()
+        return systemWarningEnabled
+    }
 
-        if let lastCheck = lastPolicyCheck,
-           let cached = cachedPolicy,
-           now.timeIntervalSince(lastCheck) < policyCacheInterval {
+    func invalidatePolicyCache() {
+        policyCache.withLock { $0.checkedAt = nil }
+    }
+
+    private var systemWarningEnabled: Bool {
+        let now = Date()
+        let interval = policyCacheInterval
+        if let cached = policyCache.withLock({ cache -> SCSensitivityAnalysisPolicy? in
+            guard let checkedAt = cache.checkedAt, let policy = cache.policy,
+                  now.timeIntervalSince(checkedAt) < interval else { return nil }
+            return policy
+        }) {
             return cached != .disabled
         }
 
         let policy = analyzer.analysisPolicy
-        cachedPolicy = policy
-        lastPolicyCheck = now
-
+        policyCache.withLock { $0 = PolicyCache(policy: policy, checkedAt: now) }
         return policy != .disabled
     }
 
     var sensitiveContentWarningStatus: String {
-        let policy = cachedPolicy ?? analyzer.analysisPolicy
+        let policy = policyCache.withLock { $0.policy } ?? analyzer.analysisPolicy
         switch policy {
         case .disabled:
             return "Disabled"
@@ -139,24 +150,5 @@ class SensitiveContentService {
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         return context.makeImage()
-    }
-}
-
-private struct TimeoutError: Error {}
-
-private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
-    try await withThrowingTaskGroup(of: T.self) { group in
-        group.addTask {
-            try await operation()
-        }
-
-        group.addTask {
-            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            throw TimeoutError()
-        }
-
-        let result = try await group.next()!
-        group.cancelAll()
-        return result
     }
 }

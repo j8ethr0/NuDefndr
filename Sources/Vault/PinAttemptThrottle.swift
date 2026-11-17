@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - PIN attempt throttle (v2.6.8)
+// Transparency Repository - PIN attempt throttle (v2.6.9)
 
 import Foundation
 import os

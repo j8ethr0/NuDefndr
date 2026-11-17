@@ -4,6 +4,44 @@ All notable changes to NuDefndr releases and this transparency repository.
 
 ---
 
+## 2026-11-14 – Version 2.6.9
+
+A Vault Camera on the Lock Screen that seals each photo as it is taken, and vault albums and labels sealed under the vault key.
+
+**Lock Screen camera**
+
+- **Vault Camera on the Lock Screen and in Control Center.** Each photo is sealed the moment it is taken and moves into the vault the next time the vault is opened.
+- **Sealed with HPKE to a key only the vault can open.** The camera holds a public key and nothing else (X25519, HKDF-SHA256, ChaCha20-Poly1305), so it can write a sealed photo but never read one back. The whole file header is authenticated data, and the capture time is inside the ciphertext.
+- **The private keys live in a keyring sealed under the vault key**, through a subkey derived for that file alone, and stored inside the vault. The camera's key rotates every 30 days.
+- **Every capture enters the vault the way every other photo does:** metadata removed by `MetadataStrip`, then sealed to its own record with complete file protection. Waiting captures are kept out of device backups.
+- **Pinch to zoom and tap to focus in both vault cameras.** 0.5× on phones with an ultra-wide lens. The volume buttons take the photo.
+
+**Vault**
+
+- **Album names and photo labels are sealed** with ChaCha20-Poly1305 under a subkey of the vault key.
+
+**Scanning**
+
+- **Each free scan covers the last 7 days.**
+- **When iOS Sensitive Content Warning is off, NUDEFNDR says so** and takes you to the setting.
+
+**Everywhere else**
+
+- **Widgets and the Live Activity take on your theme** and open the screen they show.
+- **On iPad, Home stays on screen** beside whatever you open.
+- **Five new Pro app icons.**
+- Smaller refinements throughout.
+
+**This repository**
+
+- `Sources/LockScreenCamera/LockedCaptureFormat.swift` is the sealed capture format, `Sources/LockScreenCamera/LockedCaptureKeyring.swift` the keyring that opens it, and `Sources/LockScreenCamera/LockedCaptureInbox.swift` the waiting captures.
+- `Sources/Vault/VaultIntake.swift` adds the Lock Screen capture intake. `Sources/Vault/VaultAlbumStore.swift` is the sealed album and label store.
+- `Sources/Camera/VaultCameraController.swift`, `Sources/Scanner/SensitiveContentService.swift`, `Sources/Security/Authenticator.swift` and `Sources/Vault/PanicPinStore.swift` are updated to the shipping code. All source headers read v2.6.9.
+
+As always: all scanning, detection, encryption and stripping happen locally. No photo, scan result, audit entry or vault item is transmitted.
+
+---
+
 ## 2026-11-04 – Version 2.6.8
 
 Every vault photo is sealed to its own record, Pro runs on Apple's StoreKit with no third-party SDK, and the language chosen in Settings applies to every string.

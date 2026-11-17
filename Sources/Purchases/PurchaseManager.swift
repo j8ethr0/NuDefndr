@@ -1,5 +1,5 @@
 // NuDefndr - nudefndr.com
-// Transparency Repository - Subscription entitlements (v2.6.8)
+// Transparency Repository - Subscription entitlements (v2.6.9)
 
 import Foundation
 import StoreKit
